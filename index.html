@@ -250,11 +250,17 @@ button { font: inherit; }
   letter-spacing: -.025em; line-height: 1.05; color: var(--ink); margin: 0 0 8px; }
 .edu-lead { font-size: 1rem; line-height: 1.5; color: var(--ink-2); margin: 0; }
 
-main { padding: 0 var(--gutter) 20px; }
+main { padding: 0 var(--gutter) 20px; position: relative; }
 
-/* ── Hints ── */
-.hints { background: var(--yellow-soft); color: var(--yellow-ink); border-radius: var(--r-md); padding: 14px 20px; margin-bottom: 14px; }
+/* ── Hints (overlay drawer so it never pushes status below 768px) ── */
+.hints { position: absolute; left: var(--gutter); right: var(--gutter); top: 4px; z-index: 30;
+  background: var(--yellow-soft); color: var(--yellow-ink); border: 2px solid var(--ink);
+  border-radius: var(--r-md); padding: 14px 44px 14px 20px; box-shadow: var(--shadow-lg); }
 .hints[hidden] { display: none; }
+.hints-close { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: var(--r-pill);
+  border: 1px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 16px; line-height: 1;
+  display: grid; place-items: center; cursor: pointer; }
+.hints-close:hover { background: var(--paper-3); }
 .hints ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 22px; counter-reset: h; }
 .hints li { counter-increment: h; font-size: 14.5px; line-height: 1.4; display: flex; gap: 10px; }
 .hints li::before { content: counter(h); flex: none; width: 24px; height: 24px; border-radius: var(--r-pill);
@@ -276,7 +282,17 @@ main { padding: 0 var(--gutter) 20px; }
   border-radius: var(--r-pill); padding: 8px 15px; font-size: 15px; cursor: pointer; }
 .edu-btn:hover { background: var(--yellow-600); }
 .step-count { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
-.graph-wrap { padding: 10px 14px 2px; overflow-x: auto; }
+.scroll-hint { display: none; margin: 8px 14px 0; padding: 6px 12px; border-radius: var(--r-pill);
+  background: var(--paper-2); border: 1px solid var(--line-2); color: var(--ink-2);
+  font-family: var(--font-mono); font-size: 11.5px; align-items: center; justify-content: center; gap: 6px;
+  transition: opacity .25s ease; }
+.scroll-hint.seen { opacity: .45; }
+.graph-shell { position: relative; }
+.graph-wrap { padding: 8px 14px 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.graph-legend { padding: 2px 16px 8px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.graph-legend .dot-sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.graph-legend .dot-pos { background: var(--blue-600); }
+.graph-legend .dot-neg { background: var(--red-600); }
 #graph, #lmGraph { display: block; width: 100%; height: auto; min-width: 780px; user-select: none; -webkit-user-select: none; }
 
 /* ── Status strip ── */
@@ -295,7 +311,10 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 .chip.mid { background: var(--yellow-soft); color: var(--yellow-ink); }
 .chip.ok  { background: var(--green-soft); color: var(--green-ink); }
 .chip.info { background: var(--blue-soft); color: var(--blue-ink); }
+.chip.untrain { background: var(--paper-3); color: var(--ink-2); }
 .chip[hidden] { display: none; }
+.st .l3 { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-2); }
+.st .l3:empty { display: none; }
 .status[hidden] { display: none; }
 .st.note { font-size: 13px; line-height: 1.4; color: var(--ink-2); background: var(--paper-2); }
 .card-head .pill-toggle { padding: 7px 13px; font-size: 15px; background: var(--surface); }
@@ -336,11 +355,18 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 .graph .hid:focus-visible .hbox { stroke-width: 4; }
 .graph .w-pos { fill: var(--blue-600); } .graph .w-neg { fill: var(--red-600); } .graph .w-zero { fill: var(--paper-3); }
 .graph .hm { stroke: var(--surface); stroke-width: .5; }
-.graph .edge { fill: none; stroke-linecap: round; }
+.graph .edge { fill: none; stroke-linecap: round; transition: opacity .15s ease; }
 .graph .edge.pos { stroke: var(--blue-600); } .graph .edge.neg { stroke: var(--red-600); }
 .graph .edge.zero { stroke: var(--line-strong); stroke-dasharray: 4 5; }
-.graph .knob { cursor: grab; outline: none; touch-action: none; }
+.graph .edge.dimmed { opacity: .16; }
+.graph .edge.lit { opacity: 1; }
+.graph .knob { cursor: ns-resize; outline: none; touch-action: none; }
 .graph .knob:active { cursor: grabbing; }
+.graph .knob.dimmed { opacity: .35; }
+.graph .knob.lit .body { fill: var(--yellow); stroke: var(--ink); stroke-width: 2.5; }
+.graph .line-hl { fill: var(--yellow); opacity: 0; rx: 4; transition: opacity .12s ease; }
+.graph .line-hl.on { opacity: .9; }
+.graph .hid.lit .hbox { stroke: var(--ink); stroke-width: 3.5; fill: var(--paper-2); }
 .graph .knob .body { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
 .graph .knob .track { fill: none; stroke: var(--paper-3); stroke-width: 5; }
 .graph .knob .arc { fill: none; stroke-width: 5; stroke-linecap: round; }
@@ -387,9 +413,15 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
   .edu-header-inner { flex-wrap: wrap; }
   .view-seg { order: 3; width: 100%; margin: 0 0 6px; }
   .view-seg button { flex: 1; }
+  .hints { position: static; margin-bottom: 12px; }
   .hints ol { grid-template-columns: 1fr; }
   .status { grid-template-columns: 1fr; }
   .page-head { padding: 18px var(--gutter) 14px; }
+  .scroll-hint { display: flex; }
+  .graph-shell.can-scroll-right::after {
+    content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 28px; pointer-events: none;
+    background: linear-gradient(to left, var(--paper), transparent);
+  }
 }
 </style>
 </head>
@@ -418,6 +450,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 
 <main>
   <div class="hints edu-block" id="hints" hidden>
+    <button type="button" class="hints-close" data-close-hints aria-label="Zamknij wskazówki">×</button>
     <ol>
       <li data-i18n="hint1"></li><li data-i18n="hint2"></li><li data-i18n="hint3"></li><li data-i18n="hint4"></li>
     </ol>
@@ -435,9 +468,13 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
       <button class="pill-toggle" id="testBtn" type="button" aria-pressed="false" data-i18n="testBtn"></button>
       <button class="btn-ghost" id="resetBtn" type="button" data-i18n="reset"></button>
       <button class="btn-ghost" id="randomBtn" type="button" data-i18n="random"></button>
-      <button class="edu-btn" id="trainBtn" type="button"></button>
+      <button class="btn-ghost" id="trainBtn" type="button"></button>
     </div>
-    <div class="graph-wrap"><svg id="graph" class="graph" viewBox="0 0 960 402" role="group" aria-labelledby="graphTitle"><title id="graphTitle"></title></svg></div>
+    <div class="scroll-hint" id="netScrollHint" data-i18n="scrollHint"></div>
+    <div class="graph-shell can-scroll-right" id="netGraphShell">
+      <div class="graph-wrap" id="netGraphWrap"><svg id="graph" class="graph" viewBox="0 0 960 402" role="group" aria-labelledby="graphTitle"><title id="graphTitle"></title></svg></div>
+    </div>
+    <div class="graph-legend" id="netLegend"></div>
     <div class="status" id="status">
       <button class="st" type="button" data-face="boy"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
       <button class="st" type="button" data-face="girl"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
@@ -463,6 +500,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 </header>
 <main>
   <div class="hints edu-block" hidden>
+    <button type="button" class="hints-close" data-close-hints aria-label="Zamknij wskazówki">×</button>
     <ol>
       <li data-i18n="lmHint1"></li><li data-i18n="lmHint2"></li><li data-i18n="lmHint3"></li><li data-i18n="lmHint4"></li>
     </ol>
@@ -478,12 +516,16 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
       <button class="btn-ghost" id="lmGenBtn" type="button" data-i18n="lmGenBtn"></button>
       <button class="btn-ghost" id="lmResetBtn" type="button" data-i18n="reset"></button>
       <button class="btn-ghost" id="lmRandomBtn" type="button" data-i18n="random"></button>
-      <button class="edu-btn" id="lmTrainBtn" type="button"></button>
+      <button class="btn-ghost" id="lmTrainBtn" type="button"></button>
     </div>
-    <div class="graph-wrap"><svg id="lmGraph" class="graph" viewBox="0 0 960 402" role="group" aria-labelledby="lmGraphTitle"><title id="lmGraphTitle"></title></svg></div>
+    <div class="scroll-hint" id="lmScrollHint" data-i18n="scrollHint"></div>
+    <div class="graph-shell can-scroll-right" id="lmGraphShell">
+      <div class="graph-wrap" id="lmGraphWrap"><svg id="lmGraph" class="graph" viewBox="0 0 960 402" role="group" aria-labelledby="lmGraphTitle"><title id="lmGraphTitle"></title></svg></div>
+    </div>
+    <div class="graph-legend" id="lmLegend"></div>
     <div class="status">
       <div class="st" id="lmPairBox"><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></div>
-      <div class="st" id="lmGenBox"><span class="txt"><span class="l1" data-i18n="lmWrites"></span><br><span class="l2 gen"></span></span><span class="chip" hidden></span></div>
+      <div class="st" id="lmGenBox"><span class="txt"><span class="l1" data-i18n="lmWrites"></span><br><span class="l2 gen"></span><span class="l3" id="lmGenNote"></span></span><span class="chip" hidden></span></div>
       <div class="st loss" id="lmLossBox">
         <div class="row"><span class="l1" id="lmLossLabel"></span><span class="val" id="lmLossVal"></span></div>
         <div class="meter"><i id="lmLossBar"></i></div>
@@ -573,40 +615,50 @@ const I18N = {
     docTitle: 'Sieć neuronowa jako graf obliczeń',
     title: 'Sieć neuronowa jako graf obliczeń',
     lead: 'Obraz zamienia się w liczby, liczby płyną przez sieć, a wagi decydują o wyniku. Ustaw pokrętła tak, żeby sieć rozpoznała obie twarze.',
-    hintsBtn: 'Wskazówki', pickFace: 'Twarz na wejściu', boy: 'chłopiec', girl: 'dziewczynka',
+    hintsBtn: 'Wskazówki', closeHints: 'Zamknij wskazówki', pickFace: 'Twarz na wejściu', boy: 'chłopiec', girl: 'dziewczynka',
     reset: 'Od nowa', random: 'Losowe wagi', train: 'Niech maszyna dostroi', stop: 'Zatrzymaj', step: 'krok',
-    colImage: 'Obraz', colTensor: 'Tensor 8 × 8', colHidden: 'Warstwa ukryta, wagi stałe', colKnobs: 'Pokrętła = wagi', colOut: 'Wyjścia',
+    colImage: 'Obraz', colTensor: 'Liczby 8 × 8 (tensor)', colHidden: 'Cechy (warstwa ukryta)', colKnobs: 'Pokrętła = wagi', colOut: 'Wyjścia',
     tensorCap: '64 liczby: 0 = jasny piksel, 1 = ciemny',
-    hiddenCap: '{id} = ReLU(suma piksel × waga) = ReLU({pre}) = {a}',
+    hiddenCap: '{id}: suma = {pre} → min. 0 (ReLU) = {a}',
     h1: 'włosy po bokach', h2: 'grzywka', h3: 'oczy i usta',
-    sum: 'suma', face: 'Twarz', says: 'Sieć mówi', testFace: 'Nowa', testBtn: 'Nowe twarze',
-    testNote: 'Tych twarzy sieć nie widziała podczas strojenia. Nie liczą się do błędu ani do celu: pokazują, czy wagi działają też na nowych przykładach.',
+    sum: 'wynik', softCap: 'szansa (softmax)', face: 'Twarz', says: 'Sieć mówi', testFace: 'Nowa', testBtn: 'Nowe twarze',
+    testNote: 'Tych twarzy sieć nie widziała podczas strojenia. Kliknij nową twarz, żeby puścić ją przez graf — nie liczą się do błędu ani celu.',
     bad: 'źle', mid: 'niepewnie', ok: 'dobrze',
-    loss: 'Błąd sieci', goal: 'Cel: obie twarze rozpoznane z pewnością co najmniej 80%.',
+    loss: 'Błąd sieci', goal: 'Cel: obie twarze ≥ 80% (niższy błąd = pewniejsze trafienia).',
     done: 'Udało się: te same wagi działają dla obu twarzy.',
     knob: 'Waga {h} → {o}', graphTitle: 'Graf obliczeń sieci neuronowej',
-    hint1: 'Wybierz twarz. Jej piksele to 64 liczby w tensorze.',
-    hint2: 'Wskaż neuron ukryty, żeby zobaczyć, na które piksele patrzy.',
-    hint3: 'Kręć pokrętłami: złap i obracaj wokół środka, użyj kółka myszy albo strzałek.',
+    scrollHint: 'Przesuń graf w prawo, żeby zobaczyć pokrętła i wyniki →',
+    netLegendDrag: 'Pokrętła: przeciągnij góra/dół, kliknij boki lub użyj rolki',
+    netLegendPos: 'waga dodatnia (+)', netLegendNeg: 'waga ujemna (−)',
+    netLegendHover: 'Najedź na h1–h3, żeby zobaczyć piksele',
+    hint1: 'Wybierz twarz. Jej piksele to 64 liczby w tabeli (tensorze).',
+    hint2: 'Wskaż cechę h1–h3, żeby zobaczyć, na które piksele patrzy.',
+    hint3: 'Kręć pokrętłami: przeciągnij góra/dół, kliknij lewy/prawy bok, użyj rolki myszy albo strzałek.',
     hint4: 'Sprawdź obie twarze. Te same wagi muszą działać dla obu.',
     hintNote: 'To dwa rysunki, nie ludzie: sieć szuka różnic między obrazkami. Niebieski = waga dodatnia, czerwony = ujemna.',
     tabNet: 'Sieć neuronowa', tabLm: 'Trening LLM',
     lmDocTitle: 'Trening LLM: zgadnij następne słowo',
     lmTitle: 'Trening LLM: zgadnij następne słowo',
-    lmLead: 'W pretreningu model czyta tekst i uczy się jednego: jakie słowo będzie następne. Odpowiedź jest już w tekście. Ustaw pokrętła ręcznie, a potem pozwól maszynie dostroić wszystkie wagi.',
+    lmLead: 'Podczas nauki na tekście (pretreningu) model uczy się jednego: jakie słowo będzie następne. Odpowiedź jest już w tekście. Porusz pokrętłami ręcznie, a potem pozwól maszynie dostroić wszystkie wagi.',
     lmWindow: 'Okno w tekście', lmPrevLabel: 'Poprzednie słowo', lmNextLabel: 'Następne słowo', lmGenBtn: 'Napisz zdanie',
     lmColText: 'Tekst treningowy', lmColIn: 'Słowo na wejściu', lmColKnobs: 'Pokrętła = wagi', lmColOut: 'Szanse następnego słowa (softmax)',
     lmCap1: 'żółte: słowo na wejściu', lmCap2: 'zielona ramka: odpowiedź z tekstu',
-    lmToken: 'token nr {id}', lmInCap: 'słowo wybiera swój wiersz wag', lmTag: '✓ z tekstu',
+    lmToken: 'słowo #{id} (token)', lmInCap: '1 wybiera wiersz 8 pokręteł', lmTag: '✓ z tekstu',
     lmPair: 'Po „{c}” w tekście jest „{n}”', lmGives: 'Model daje mu {p}',
     lmGenPair: 'Model pisze dalej po „{c}”', lmGenPick: 'Wylosował „{n}”, miało {p} szans',
     lmWrites: 'Model pisze', lmLoss: 'Błąd modelu', lmGenEmpty: 'Kliknij „Napisz zdanie”', lmInText: 'jest w tekście', lmNew: 'nowe zdanie',
-    lmGoal: 'Cel: błąd poniżej 0.50. Zera nie będzie: po „{c}” w tekście raz jest „{a}”, raz „{b}”.',
+    lmUntrained: 'losowy traf', lmFragment: 'krótki fragment',
+    lmNoteUntrained: 'Wagi nie są jeszcze dostrojone — model losuje w ciemno.',
+    lmNoteNew: 'Model widzi tylko 1 poprzednie słowo — dlatego łączy wzorce w nowe zdanie.',
+    lmLegendDrag: 'Pokrętła: przeciągnij góra/dół, kliknij boki lub użyj rolki',
+    lmLegendPos: 'większa szansa (+)', lmLegendNeg: 'mniejsza szansa (−)',
+    lmLegendClick: 'Kliknij dowolne słowo w tekście po lewej',
+    lmGoal: 'Cel: błąd poniżej 0.50 (im mniej, tym lepiej). Zera nie będzie: po „{c}” raz jest „{a}”, raz „{b}”.',
     lmDone: 'Udało się: model zgaduje następne słowo tak dobrze, jak pozwala ten tekst.',
     lmKnob: 'Waga: po „{c}” słowo „{n}”', lmGraphTitle: 'Model przewidujący następne słowo', lmTokLabel: 'Słowo {i} z 16: {w}',
     lmHint1: 'Kliknij słowo w tekście albo użyj strzałek. Następne słowo to odpowiedź: nikt nie musi jej podpisywać.',
-    lmHint2: 'Kręć pokrętłami: każde ustawia szansę jednego słowa po słowie na wejściu.',
-    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia wszystkie 64 wagi.',
+    lmHint2: 'Kręć pokrętłami (przeciągnij góra/dół lub użyj rolki): każde ustawia szansę jednego słowa po słowie na wejściu.',
+    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia wszystkie 64 wagi (8 słów × 8 pokręteł).',
     lmHint4: 'Napisz zdanie: model losuje słowo po słowie według swoich szans. Czasem powstaje zdanie, którego nie było w tekście.',
     lmHintNote: 'Prawdziwy model ma miliardy wag, widzi tysiące słów wstecz i czyta ogromne zbiory tekstu. Ten widzi tylko jedno słowo wstecz, ale pętla jest ta sama: zgadnij, sprawdź, popraw.',
   },
@@ -614,40 +666,50 @@ const I18N = {
     docTitle: 'A neural network as a computation graph',
     title: 'A neural network as a computation graph',
     lead: 'An image becomes numbers, the numbers flow through the network, and the weights decide the result. Turn the knobs until the network recognises both faces.',
-    hintsBtn: 'Hints', pickFace: 'Input face', boy: 'boy', girl: 'girl',
+    hintsBtn: 'Hints', closeHints: 'Close hints', pickFace: 'Input face', boy: 'boy', girl: 'girl',
     reset: 'Reset', random: 'Random weights', train: 'Let the machine tune it', stop: 'Stop', step: 'step',
-    colImage: 'Image', colTensor: 'Tensor 8 × 8', colHidden: 'Hidden layer, fixed weights', colKnobs: 'Knobs = weights', colOut: 'Outputs',
+    colImage: 'Image', colTensor: '8 × 8 numbers (tensor)', colHidden: 'Features (hidden layer)', colKnobs: 'Knobs = weights', colOut: 'Outputs',
     tensorCap: '64 numbers: 0 = light pixel, 1 = dark',
-    hiddenCap: '{id} = ReLU(sum of pixel × weight) = ReLU({pre}) = {a}',
+    hiddenCap: '{id}: sum = {pre} → min 0 (ReLU) = {a}',
     h1: 'hair at the sides', h2: 'fringe', h3: 'eyes and mouth',
-    sum: 'sum', face: 'Face', says: 'Network says', testFace: 'New', testBtn: 'New faces',
-    testNote: 'The network never saw these faces during tuning. They do not count towards the error or the goal: they show whether the weights also work on new examples.',
+    sum: 'score', softCap: 'chance (softmax)', face: 'Face', says: 'Network says', testFace: 'New', testBtn: 'New faces',
+    testNote: 'The network never saw these faces during tuning. Click a new face to send it through the graph — they do not count towards the error or goal.',
     bad: 'wrong', mid: 'unsure', ok: 'correct',
-    loss: 'Network error', goal: 'Goal: both faces recognised with at least 80% confidence.',
+    loss: 'Network error', goal: 'Goal: both faces ≥ 80% (lower error = more confident predictions).',
     done: 'Done: the same weights work for both faces.',
     knob: 'Weight {h} → {o}', graphTitle: 'Computation graph of the neural network',
-    hint1: 'Pick a face. Its pixels are the 64 numbers in the tensor.',
-    hint2: 'Point at a hidden neuron to see which pixels it looks at.',
-    hint3: 'Turn the knobs: grab and rotate around the centre, use the mouse wheel or the arrow keys.',
+    scrollHint: 'Swipe the graph right to see the knobs and outputs →',
+    netLegendDrag: 'Knobs: drag up/down, click sides or scroll',
+    netLegendPos: 'positive weight (+)', netLegendNeg: 'negative weight (−)',
+    netLegendHover: 'Hover h1–h3 to see their pixels',
+    hint1: 'Pick a face. Its pixels are the 64 numbers in the grid (tensor).',
+    hint2: 'Point at a feature h1–h3 to see which pixels it looks at.',
+    hint3: 'Turn the knobs: drag up/down, click the left/right side, use the mouse wheel or arrow keys.',
     hint4: 'Check both faces. The same weights must work for both.',
     hintNote: 'These are two drawings, not people: the network looks for differences between the pictures. Blue = positive weight, red = negative.',
     tabNet: 'Neural network', tabLm: 'LLM training',
     lmDocTitle: 'LLM training: guess the next word',
     lmTitle: 'LLM training: guess the next word',
-    lmLead: 'In pretraining a model reads text and learns one thing: which word comes next. The answer is already in the text. Set the knobs by hand, then let the machine tune all the weights.',
+    lmLead: 'During text training (pretraining) a model learns one thing: which word comes next. The answer is already in the text. Try turning the knobs by hand, then let the machine tune all the weights.',
     lmWindow: 'Window in the text', lmPrevLabel: 'Previous word', lmNextLabel: 'Next word', lmGenBtn: 'Write a sentence',
     lmColText: 'Training text', lmColIn: 'Input word', lmColKnobs: 'Knobs = weights', lmColOut: 'Chances of the next word (softmax)',
     lmCap1: 'yellow: the input word', lmCap2: 'green frame: the answer from the text',
-    lmToken: 'token no. {id}', lmInCap: 'the word selects its row of weights', lmTag: '✓ in the text',
+    lmToken: 'word #{id} (token)', lmInCap: '1 picks this word’s 8 knobs', lmTag: '✓ in the text',
     lmPair: 'After “{c}” the text has “{n}”', lmGives: 'The model gives it {p}',
     lmGenPair: 'The model writes on after “{c}”', lmGenPick: 'It drew “{n}”, which had a {p} chance',
     lmWrites: 'The model writes', lmLoss: 'Model error', lmGenEmpty: 'Click “Write a sentence”', lmInText: 'is in the text', lmNew: 'new sentence',
-    lmGoal: 'Goal: error below 0.50. It cannot reach zero: after “{c}” the text has “{a}” once and “{b}” once.',
+    lmUntrained: 'random draw', lmFragment: 'short fragment',
+    lmNoteUntrained: 'Weights are not tuned yet — the model picks words at random.',
+    lmNoteNew: 'The model sees only 1 previous word — so it combines patterns into a new sentence.',
+    lmLegendDrag: 'Knobs: drag up/down, click sides or scroll',
+    lmLegendPos: 'higher chance (+)', lmLegendNeg: 'lower chance (−)',
+    lmLegendClick: 'Click any word in the text on the left',
+    lmGoal: 'Goal: error below 0.50 (lower is better). It cannot reach zero: after “{c}” the text has “{a}” once and “{b}” once.',
     lmDone: 'Done: the model guesses the next word as well as this text allows.',
     lmKnob: 'Weight: after “{c}” the word “{n}”', lmGraphTitle: 'A model that predicts the next word', lmTokLabel: 'Word {i} of 16: {w}',
     lmHint1: 'Click a word in the text or use the arrow keys. The next word is the answer: nobody has to label it.',
-    lmHint2: 'Turn the knobs: each one sets the chance of one word after the input word.',
-    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges all 64 weights a little.',
+    lmHint2: 'Turn the knobs (drag up/down or scroll): each one sets the chance of one word after the input word.',
+    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges all 64 weights (8 words × 8 knobs).',
     lmHint4: 'Write a sentence: the model draws word after word according to its chances. Sometimes it makes a sentence that was not in the text.',
     lmHintNote: 'A real model has billions of weights, sees thousands of words back and reads huge collections of text. This one sees only one word back, but the loop is the same: guess, check, correct.',
   },
@@ -676,9 +738,10 @@ const state = {
   face: 'boy', showTest: false,
   W: START_W.map(r => r.slice()),
   focusHidden: null, pinnedHidden: null,
+  focusKnob: null, touchedNet: false,
   training: false, steps: 0, raf: 0,
   view: location.hash === '#llm' ? 'lm' : 'net',
-  lm: { W: lmZeros(), pos: 0, training: false, steps: 0, raf: 0,
+  lm: { W: lmZeros(), pos: 0, training: false, steps: 0, raf: 0, touched: false,
         gen: null, genCtx: null, genPick: null, genDone: false, genTimer: 0, rng: Math.random },
 };
 
@@ -772,7 +835,37 @@ function fmt(v, d = 2) {
   if (Math.abs(v) < 0.5 / Math.pow(10, d)) v = 0;
   return v.toFixed(d).replace('-', '−');
 }
-const pct = p => Math.floor(p * 100 + 1e-9) + '%';
+const pct = p => Math.round(p * 100) + '%';
+function pctList(probs) {
+  const max = Math.max(...probs), min = Math.min(...probs);
+  if (probs.length > 2 && max - min < 1e-6) {
+    const val = (100 / probs.length).toFixed(1);
+    const formatted = state.lang === 'pl' ? val.replace('.', ',') : val;
+    return probs.map(() => formatted + '%');
+  }
+  const raw = probs.map(p => p * 100);
+  const floored = raw.map(v => Math.floor(v + 1e-9));
+  let rem = 100 - floored.reduce((a, b) => a + b, 0);
+  const order = raw.map((v, i) => ({ i, v, frac: v - floored[i] }))
+    .sort((a, b) => b.frac - a.frac || b.v - a.v || a.i - b.i);
+  let idx = 0;
+  while (rem > 0 && idx < order.length) {
+    let end = idx + 1;
+    while (end < order.length && Math.abs(order[end].frac - order[idx].frac) < 1e-6 && Math.abs(order[end].v - order[idx].v) < 1e-6) end++;
+    const groupSize = end - idx;
+    if (groupSize <= rem) {
+      for (let k = idx; k < end; k++) floored[order[k].i]++;
+      rem -= groupSize;
+      idx = end;
+    } else {
+      // Tie larger than remaining points: assign to largest probability to keep equal weights symmetric
+      const top = raw.indexOf(Math.max(...raw));
+      floored[top] += rem;
+      rem = 0;
+    }
+  }
+  return floored.map(v => v + '%');
+}
 function grey(v) {   // 0 = white, 1 = ink (#1C1917)
   const c = [255 - v * (255 - 28), 255 - v * (255 - 25), 255 - v * (255 - 23)].map(Math.round);
   return `rgb(${c[0]},${c[1]},${c[2]})`;
@@ -797,26 +890,39 @@ function makeKnob(parent, x, y, R, max, attrs) {
   const val = el('text', { class: 'val', y: R < 18 ? 3.5 : 4 }, g);
   return { g, arc, dot, val };
 }
-function bindKnob(g, max, get, set) {
+function bindKnob(g, max, get, set, onActive) {
   let drag = null;
   const snapTo = v => Math.min(max, Math.max(-max, snap(v)));
+  const pxPerRange = max > 2 ? 150 : 120;
   g.addEventListener('pointerdown', e => {
     g.setPointerCapture(e.pointerId); g.focus({ preventScroll: true });
     const r = g.querySelector('.body').getBoundingClientRect();
-    drag = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, side: Math.sign(get()) }; e.preventDefault();
+    drag = { x0: e.clientX, y0: e.clientY, cx: r.left + r.width / 2, v0: get(), moved: false };
+    if (onActive) onActive(true);
+    e.preventDefault();
   });
   g.addEventListener('pointermove', e => {
     if (!drag) return;
-    const dx = e.clientX - drag.cx, dy = e.clientY - drag.cy;
-    if (dx * dx + dy * dy < 36) return;                     // too close to the centre: angle is unstable
-    let deg = Math.atan2(dx, -dy) * 180 / Math.PI;           // 0 = top, clockwise positive
-    if (Math.abs(deg) > 135) deg = 135 * (drag.side || Math.sign(deg));   // bottom gap: stay at the end last used
-    else drag.side = Math.sign(deg);
-    const v = snapTo(deg / 135 * max);
+    const dx = e.clientX - drag.x0, dy = drag.y0 - e.clientY;
+    if (!drag.moved && dx * dx + dy * dy < 16) return;
+    drag.moved = true;
+    const delta = (Math.abs(dy) >= Math.abs(dx) ? dy : dx) / pxPerRange * (max * 2);
+    const v = snapTo(drag.v0 + delta);
     if (Math.abs(v - get()) > 1e-9) set(v);
   });
-  const end = () => { drag = null; };
+  const end = e => {
+    if (!drag) return;
+    const wasClick = !drag.moved && e.type === 'pointerup';
+    const clickSide = e.clientX >= drag.cx ? 1 : -1;
+    drag = null;
+    if (wasClick) set(snapTo(get() + clickSide * (W_STEP * 2)));
+    if (onActive) onActive(false);
+  };
   g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+  g.addEventListener('pointerenter', () => { if (onActive) onActive(true); });
+  g.addEventListener('pointerleave', () => { if (!drag && onActive) onActive(false); });
+  g.addEventListener('focus', () => { if (onActive) onActive(true); });
+  g.addEventListener('blur', () => { if (!drag && onActive) onActive(false); });
   g.addEventListener('wheel', e => { e.preventDefault(); set(snapTo(get() + (e.deltaY < 0 ? W_STEP : -W_STEP))); }, { passive: false });
   g.addEventListener('keydown', e => {
     const w = get();
@@ -847,7 +953,7 @@ function buildGraph() {
   };
   chip(G.img.x, 120, 'c-grape', 'colImage');
   chip(G.ten.x, 216, 'c-grape', 'colTensor');
-  chip(G.hid.x - 44, 208, 'c-ink', 'colHidden');
+  chip(G.hid.x - 36, 198, 'c-ink', 'colHidden');
   chip(G.hid.x + G.hid.w + 40, 122, 'c-yellow', 'colKnobs');
   chip(G.out.x, G.out.w, 'c-blue', 'colOut');
 
@@ -899,11 +1005,12 @@ function buildGraph() {
     const prob = el('text', { class: 'disp', x: x + G.out.w - 14, y: top + 31, 'font-size': 22, 'text-anchor': 'end' }, g);
     el('rect', { class: 'bar-track', x: x + 14, y: top + 40, width: G.out.w - 28, height: 8, rx: 4 }, g);
     const bar = el('rect', { class: 'bar-fill', x: x + 14, y: top + 40, width: 0, height: 8, rx: 4 }, g);
+    const lineHls = HIDDEN.map((n, i) => el('rect', { class: 'line-hl', x: x + 9, y: top + 55 + i * 18, width: G.out.w - 18, height: 17 }, g));
     const lines = HIDDEN.map((n, i) => el('text', { x: x + 14, y: top + 68 + i * 18, 'font-size': 11.5 }, g));
     el('line', { class: 'rule', x1: x + 14, x2: x + G.out.w - 14, y1: top + 113, y2: top + 113 }, g);
     const sum = el('text', { class: 'b', x: x + 14, y: top + 131, 'font-size': 12 }, g);
     const soft = el('text', { class: 'muted', x: x + 14, y: top + 149, 'font-size': 11 }, g);
-    refs.outs.push({ g, prob, bar, lines, sum, soft });
+    refs.outs.push({ g, prob, bar, lineHls, lines, sum, soft });
   });
 
   // knobs (on top)
@@ -988,9 +1095,13 @@ function applyLang() {
   layoutLmText();
   document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n || n.getAttribute('data-i18n')); });
   document.querySelectorAll('[data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+  document.querySelectorAll('[data-close-hints]').forEach(b => b.setAttribute('aria-label', t('closeHints')));
   $('#graphTitle').textContent = t('graphTitle');
   $('#lmGraphTitle').textContent = t('lmGraphTitle');
   $('#lmPrev').setAttribute('aria-label', t('lmPrevLabel')); $('#lmNext').setAttribute('aria-label', t('lmNextLabel'));
+  $('#netLegend').innerHTML = `<span>${t('netLegendDrag')}</span><span><i class="dot-sw dot-pos"></i>${t('netLegendPos')}</span><span><i class="dot-sw dot-neg"></i>${t('netLegendNeg')}</span><span>${t('netLegendHover')}</span>`;
+  $('#lmLegend').innerHTML = `<span>${t('lmLegendDrag')}</span><span><i class="dot-sw dot-pos"></i>${t('lmLegendPos')}</span><span><i class="dot-sw dot-neg"></i>${t('lmLegendNeg')}</span><span>${t('lmLegendClick')}</span>`;
+  $('#live').textContent = '';
   render();
 }
 function render() {
@@ -1015,9 +1126,11 @@ function render() {
   } else refs.cap.textContent = t('tensorCap');
 
   // hidden
+  const fk = state.focusKnob;
   HIDDEN.forEach((n, i) => {
     refs.hval[i].textContent = fmt(f.h[i]);
     refs.hid[i].classList.toggle('on', active === i);
+    refs.hid[i].classList.toggle('lit', fk !== null && fk.i === i);
     refs.hid[i].setAttribute('aria-pressed', state.pinnedHidden === i);
     refs.hid[i].setAttribute('aria-label', `${n.id}: ${t(n.id)}, ${fmt(f.h[i])}`);
     refs.fans[i].setAttribute('class', 'fan' + (active === i ? ' on' : ''));
@@ -1027,20 +1140,26 @@ function render() {
   HIDDEN.forEach((n, i) => OUT.forEach((o, k) => {
     const w = state.W[i][k], sc = signClass(w), kn = refs.knobs[i][k], R = G.knobR;
     const e = refs.edges[i][k];
-    e.setAttribute('class', 'edge ' + sc);
-    e.setAttribute('stroke-width', sc === 'zero' ? 1.5 : 1.5 + Math.abs(w) * 3);
+    const isLit = fk !== null && fk.i === i && fk.k === k;
+    const isDim = fk !== null && !isLit;
+    e.setAttribute('class', 'edge ' + sc + (isLit ? ' lit' : isDim ? ' dimmed' : ''));
+    e.setAttribute('stroke-width', (sc === 'zero' ? 1.5 : 1.5 + Math.abs(w) * 3) + (isLit ? 1.5 : 0));
+    kn.g.classList.toggle('lit', isLit);
+    kn.g.classList.toggle('dimmed', isDim);
     drawKnob(kn, w, W_MAX, R, 2);
     kn.g.setAttribute('aria-label', t('knob', { h: n.id, o: t(o) }));
   }));
 
   // outputs
   const label = FACES[state.face].label;
+  const outPcts = pctList(f.p);
   OUT.forEach((o, k) => {
     const r = refs.outs[k];
-    r.prob.textContent = pct(f.p[k]);
+    r.prob.textContent = outPcts[k];
     r.bar.setAttribute('width', Math.max(0, (G.out.w - 28) * f.p[k]));
     HIDDEN.forEach((n, i) => {
       const w = state.W[i][k], sc = signClass(w);
+      r.lineHls[i].classList.toggle('on', fk !== null && fk.i === i && fk.k === k);
       r.lines[i].innerHTML = '';
       el('tspan', { class: 'muted' }, r.lines[i], n.id + '  ');
       el('tspan', {}, r.lines[i], fmt(f.h[i]) + ' × ');
@@ -1049,7 +1168,7 @@ function render() {
       el('tspan', { class: 'b' }, r.lines[i], fmt(f.h[i] * w));
     });
     r.sum.textContent = `${t('sum')} z = ${fmt(f.z[k])}`;
-    r.soft.textContent = `softmax(z) → ${pct(f.p[k])}`;
+    r.soft.textContent = `${t('softCap')} → ${outPcts[k]}`;
     const isPred = f.pred === k;
     r.g.setAttribute('class', 'out' + (isPred ? (k === label ? ' good' : ' wrong') : ''));
   });
@@ -1057,10 +1176,11 @@ function render() {
   // status strip (both faces, always)
   document.querySelectorAll('#viewNet .status button.st').forEach(b => {
     const key = b.dataset.face, ff = forward(key, state.W), lab = FACES[key].label;
+    const fp = pctList(ff.p);
     const right = ff.pred === lab, sure = ff.p[lab] >= GOAL;
     b.setAttribute('aria-pressed', key === state.face);
     b.querySelector('.l1').textContent = `${t(TEST.includes(key) ? 'testFace' : 'face')}: ${t(OUT[lab])}`;
-    b.querySelector('.l2').textContent = `${t('says')}: ${t(OUT[ff.pred])} ${pct(ff.p[ff.pred])}`;
+    b.querySelector('.l2').textContent = `${t('says')}: ${t(OUT[ff.pred])} ${fp[ff.pred]}`;
     const chip = b.querySelector('.chip'), st = !right ? 'bad' : (sure ? 'ok' : 'mid');
     chip.className = 'chip ' + st; chip.textContent = t(st);
     b.dataset.state = st;
@@ -1077,7 +1197,9 @@ function render() {
     b.classList.toggle('active', b.dataset.face === state.face);
     b.setAttribute('aria-pressed', b.dataset.face === state.face);
   });
-  $('#trainBtn').textContent = t(state.training ? 'stop' : 'train');
+  const trainBtn = $('#trainBtn');
+  trainBtn.textContent = t(state.training ? 'stop' : 'train');
+  trainBtn.className = (state.touchedNet || state.training) ? 'edu-btn' : 'btn-ghost';
   $('#lossLabel').textContent = t('loss') + (state.steps ? ` · ${t('step')} ${state.steps}` : '');
   $('#testRow').hidden = !state.showTest;
   $('#testBtn').setAttribute('aria-pressed', state.showTest);
@@ -1118,6 +1240,7 @@ function renderLm() {
   }
 
   // knobs, edges, rows
+  const lmPcts = pctList(p);
   for (let k = 0; k < LM_V; k++) {
     const w = lm.W[ctx][k], sc = signClass(w), r = lmRefs.rows[k];
     lmRefs.edges[k].setAttribute('class', 'edge ' + sc);
@@ -1125,7 +1248,7 @@ function renderLm() {
     drawKnob(lmRefs.knobs[k], w, LM_W_MAX, LG.knob.r, 1);
     lmRefs.knobs[k].g.setAttribute('aria-label', t('lmKnob', { c: lmWord(ctx), n: lmWord(k) }));
     r.word.textContent = lmWord(k);
-    r.prob.textContent = pct(p[k]);
+    r.prob.textContent = lmPcts[k];
     r.bar.setAttribute('width', Math.max(0, LG.bar.w * p[k]));
     r.tag.textContent = k === target ? t('lmTag') : '';
     r.g.setAttribute('class', 'row' + (k === target ? ' tgt' : '') + (gen && k === lm.genPick ? ' pick' : ''));
@@ -1135,34 +1258,47 @@ function renderLm() {
   const pair = $('#lmPairBox'), chip = pair.querySelector('.chip');
   if (gen) {
     pair.querySelector('.l1').textContent = t('lmGenPair', { c: lmWord(ctx) });
-    pair.querySelector('.l2').textContent = t('lmGenPick', { n: lmWord(lm.genPick), p: pct(p[lm.genPick]) });
+    pair.querySelector('.l2').textContent = t('lmGenPick', { n: lmWord(lm.genPick), p: lmPcts[lm.genPick] });
     chip.hidden = true;
   } else {
     const st = p[target] < LM_BAD ? 'bad' : (p[target] < LM_OK ? 'mid' : 'ok');
     pair.querySelector('.l1').textContent = t('lmPair', { c: lmWord(ctx), n: lmWord(target) });
-    pair.querySelector('.l2').textContent = t('lmGives', { p: pct(p[target]) });
+    pair.querySelector('.l2').textContent = t('lmGives', { p: lmPcts[target] });
     chip.hidden = false; chip.className = 'chip ' + st; chip.textContent = t(st);
     pair.dataset.state = st;
   }
 
-  // status: generated sentence
-  const gbox = $('#lmGenBox'), gchip = gbox.querySelector('.chip');
+  // status: loss + generated sentence
+  const L = lmLoss(lm.W), done = L < LM_GOAL, trained = L < 1.2;
+  const gbox = $('#lmGenBox'), gchip = gbox.querySelector('.chip'), gnote = $('#lmGenNote');
   gbox.querySelector('.l2').textContent = lm.gen ? lmSentence(lm.gen, lm.genDone) : t('lmGenEmpty');
   gchip.hidden = !(lm.gen && lm.genDone);
+  gnote.textContent = '';
   if (lm.gen && lm.genDone) {
     const known = lmInText(lm.gen);
-    gchip.className = 'chip ' + (known ? 'mid' : 'info'); gchip.textContent = t(known ? 'lmInText' : 'lmNew');
+    const wordCount = lm.gen.filter(id => id !== LM_END).length;
+    if (!trained) {
+      gchip.className = 'chip untrain'; gchip.textContent = t('lmUntrained');
+      gnote.textContent = t('lmNoteUntrained');
+    } else if (known) {
+      gchip.className = 'chip mid'; gchip.textContent = t('lmInText');
+    } else if (wordCount >= 2) {
+      gchip.className = 'chip info'; gchip.textContent = t('lmNew');
+      gnote.textContent = t('lmNoteNew');
+    } else {
+      gchip.className = 'chip mid'; gchip.textContent = t('lmFragment');
+    }
   }
 
-  // status: loss
-  const L = lmLoss(lm.W), done = L < LM_GOAL;
   $('#lmLossVal').textContent = fmt(L);
   $('#lmLossBar').style.width = Math.min(100, L / 2.2 * 100) + '%';
   $('#lmLossBox').classList.toggle('done', done);
   $('#lmGoalText').textContent = done ? t('lmDone') : t('lmGoal', { c: lmWord(0), a: lmWord(2), b: lmWord(3) });
   if (done !== renderLm.wasDone) { renderLm.wasDone = done; if (done) $('#live').textContent = t('lmDone'); }
   $('#lmLossLabel').textContent = t('lmLoss') + (lm.steps ? ` · ${t('step')} ${lm.steps}` : '');
-  $('#lmTrainBtn').textContent = t(lm.training ? 'stop' : 'train');
+  const lmTrainBtn = $('#lmTrainBtn');
+  lmTrainBtn.textContent = t(lm.training ? 'stop' : 'train');
+  lmTrainBtn.className = (lm.touched || lm.training) ? 'edu-btn' : 'btn-ghost';
 
   // DOM contract
   const card = $('#lmCard');
@@ -1172,7 +1308,7 @@ function renderLm() {
 }
 
 // ─── Actions ───
-function setWeight(i, k, v) { stopTraining(); state.W[i][k] = clamp(snap(v)); state.steps = 0; render(); }
+function setWeight(i, k, v) { stopTraining(); state.touchedNet = true; state.W[i][k] = clamp(snap(v)); state.steps = 0; render(); }
 function setWeights(W) { stopTraining(); state.W = W.map(r => r.map(clamp)); state.steps = 0; render(); }
 function stopTraining() { if (state.training) { state.training = false; cancelAnimationFrame(state.raf); } }
 function trainTick() {
@@ -1197,7 +1333,7 @@ function toggleTraining() {
 
 function lmStopTraining() { const lm = state.lm; if (lm.training) { lm.training = false; cancelAnimationFrame(lm.raf); } }
 function lmStopGen() { const lm = state.lm; clearTimeout(lm.genTimer); lm.genCtx = null; lm.genPick = null; if (lm.gen) lm.genDone = true; }
-function lmSetWeight(c, k, v) { lmStopTraining(); state.lm.W[c][k] = lmClamp(snap(v)); state.lm.steps = 0; render(); }
+function lmSetWeight(c, k, v) { lmStopTraining(); state.lm.touched = true; state.lm.W[c][k] = lmClamp(snap(v)); state.lm.steps = 0; render(); }
 function lmSetWeights(W) { lmStopTraining(); lmStopGen(); state.lm.W = W.map(r => r.map(lmClamp)); state.lm.steps = 0; render(); }
 function lmSetPos(i) { lmStopGen(); state.lm.pos = (i + LM_PAIRS) % LM_PAIRS; render(); }
 function lmTrainOnce() {
@@ -1246,6 +1382,8 @@ function setView(v) {
   if (v === state.view) return;
   stopTraining(); lmStopTraining(); lmStopGen();
   state.view = v;
+  $('#live').textContent = '';
+  window.scrollTo({ top: 0 });
   try { history.replaceState(null, '', v === 'lm' ? '#llm' : location.pathname + location.search); } catch (e) { /* file:// */ }
   render();
 }
@@ -1255,15 +1393,35 @@ function bind() {
   document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => {
     state.lang = b.dataset.lang; store.set('nn-lang', state.lang); applyLang();
   }));
-  $('#hintsBtn').addEventListener('click', () => { state.hints = !state.hints; store.set('nn-hints', state.hints ? '1' : '0'); render(); });
+  const toggleHints = (force) => {
+    state.hints = typeof force === 'boolean' ? force : !state.hints;
+    store.set('nn-hints', state.hints ? '1' : '0');
+    render();
+  };
+  $('#hintsBtn').addEventListener('click', () => toggleHints());
+  document.querySelectorAll('[data-close-hints]').forEach(b => b.addEventListener('click', () => toggleHints(false)));
   document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => { state.face = b.dataset.face; render(); }));
-  $('#resetBtn').addEventListener('click', () => setWeights(START_W));
-  $('#randomBtn').addEventListener('click', () => setWeights(START_W.map(r => r.map(() => snap(Math.random() * 4 - 2)))));
-  $('#trainBtn').addEventListener('click', toggleTraining);
+  $('#resetBtn').addEventListener('click', () => { state.touchedNet = false; setWeights(START_W); });
+  $('#randomBtn').addEventListener('click', () => { state.touchedNet = true; setWeights(START_W.map(r => r.map(() => snap(Math.random() * 4 - 2)))); });
+  $('#trainBtn').addEventListener('click', () => { state.touchedNet = true; toggleTraining(); });
   $('#testBtn').addEventListener('click', () => {
     state.showTest = !state.showTest;
     if (!state.showTest && TEST.includes(state.face)) state.face = 'boy';
     render();
+    if (state.showTest) requestAnimationFrame(() => $('#testRow').scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  });
+
+  // Mobile horizontal scroll cue + edge shadow state
+  [['#netGraphWrap', '#netGraphShell', '#netScrollHint'], ['#lmGraphWrap', '#lmGraphShell', '#lmScrollHint']].forEach(([wSel, sSel, hSel]) => {
+    const wrap = $(wSel), shell = $(sSel), hint = $(hSel);
+    const updateScroll = () => {
+      const canRight = wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 4;
+      shell.classList.toggle('can-scroll-right', canRight);
+      if (wrap.scrollLeft > 24) hint.classList.add('seen');
+    };
+    wrap.addEventListener('scroll', updateScroll, { passive: true });
+    addEventListener('resize', updateScroll, { passive: true });
+    requestAnimationFrame(updateScroll);
   });
 
   refs.hid.forEach((g, i) => {
@@ -1276,7 +1434,14 @@ function bind() {
     g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pin(); } });
   });
 
-  refs.knobs.forEach((row, i) => row.forEach((kn, k) => bindKnob(kn.g, W_MAX, () => state.W[i][k], v => setWeight(i, k, v))));
+  refs.knobs.forEach((row, i) => row.forEach((kn, k) => bindKnob(
+    kn.g, W_MAX, () => state.W[i][k], v => setWeight(i, k, v),
+    on => {
+      if (on) state.focusKnob = { i, k };
+      else if (state.focusKnob && state.focusKnob.i === i && state.focusKnob.k === k) state.focusKnob = null;
+      render();
+    }
+  )));
 
   // LLM tab
   document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
@@ -1296,12 +1461,13 @@ function bind() {
   $('#lmPrev').addEventListener('click', () => lmSetPos(state.lm.pos - 1));
   $('#lmNext').addEventListener('click', () => lmSetPos(state.lm.pos + 1));
   $('#lmGenBtn').addEventListener('click', lmGenerate);
-  $('#lmResetBtn').addEventListener('click', () => lmSetWeights(lmZeros()));
-  $('#lmRandomBtn').addEventListener('click', () => lmSetWeights(lmZeros().map(r => r.map(() => snap(Math.random() * 4 - 2)))));
-  $('#lmTrainBtn').addEventListener('click', lmToggleTraining);
+  $('#lmResetBtn').addEventListener('click', () => { state.lm.touched = false; lmSetWeights(lmZeros()); });
+  $('#lmRandomBtn').addEventListener('click', () => { state.lm.touched = true; lmSetWeights(lmZeros().map(r => r.map(() => snap(Math.random() * 4 - 2)))); });
+  $('#lmTrainBtn').addEventListener('click', () => { state.lm.touched = true; lmToggleTraining(); });
 
   document.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape' && state.hints) { toggleHints(false); return; }
     if (e.key === 'h' || e.key === 'H') { $('#hintsBtn').click(); return; }
     if (state.view === 'lm') {
       if (e.key === 'ArrowLeft') { e.preventDefault(); lmSetPos(state.lm.pos - 1); }
