@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=202611240841">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=202611240841">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=202611240841">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=202611240841">
+<meta name="theme-color" content="#FFD500">
+<title>Sieć neuronowa jako graf obliczeń</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+  @keyframes boot-reveal { to { visibility: visible; } }
+  html:not(.app-ready) body { visibility: hidden; animation: boot-reveal 0s 4s forwards; }
+  @media print { html:not(.app-ready) body { visibility: visible; animation: none; } }
+</style>
+<noscript><style>html:not(.app-ready) body { visibility: visible; animation: none; }</style></noscript>
+<style>
+/* ============================================================
+   edulab - Colors & Type foundation
+   Fonts (Outfit, IBM Plex Sans, Roboto Mono) load from Google Fonts
+   via the <link> tags in tokens/head.html - paste that into <head>.
+   No @import here: it chains requests and blocks rendering.
+   ============================================================ */
+
+:root {
+  /* ---- Brand fonts ---- */
+  --font-display: 'Outfit', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:    'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ============================================================
+     RAW COLOR TOKENS
+     ============================================================ */
+
+  /* Paper - page background is white; the stone steps are bands / wells.
+     Warm neutral grey (no yellow cast) so yellow and the colour blocks stay the
+     loudest thing on the page. Stone v2 (2026-10-10) replaced the cream sand
+     (#FBF7E6 / #F5EDCB), which at 1.07:1 on white did not read as a surface. */
+  --paper:    #FFFFFF;   /* page background (white)                       */
+  --paper-2:  #F5F3F0;   /* stone band: alternating sections, card heads   */
+  --paper-3:  #EAE6E0;   /* deepest stone: wells, table heads, bar tracks  */
+  --surface:  #FFFFFF;   /* cards & sheets                                */
+
+  /* Ink - warm near-black text & lines */
+  --ink:      #1C1917;   /* primary text                                    */
+  --ink-2:    #44403C;   /* secondary text, 10.3:1 on white                 */
+  --ink-3:    #625B53;   /* muted / placeholder: >= 4.5:1 on every paper step */
+  --line:     #E0DBD3;   /* hairline: dividers, table rows, card heads      */
+  --line-2:   #C9C2B7;   /* stronger: card contours, section rules          */
+  --line-strong: #857C69;/* control boundaries (inputs, ghost buttons,
+                            answer options): >= 3:1 on paper steps (WCAG 1.4.11) */
+
+  /* ---- Brand: Yellow main · Blue + Green secondary · Red danger ----
+     Plain saturated colours. The base colour (--blue) is for large fills,
+     illustrations and large text (>= 24px, or 19px bold). "-soft" is the
+     solid fill for chips and panels that carry small text: it is the
+     AA shade (= "-600"), so its "-ink" (white; dark ink on yellow) reaches
+     4.5:1. A colour used AS text goes only on white and uses "-600".
+     Never colour-on-colour (no green text on green).
+     Gate: python3 scripts/check-contrast.py */
+
+  /* Yellow - primary (buttons, progress, values on dark panels) */
+  --yellow:      #FFD500;
+  --yellow-600:  #F0C800;  /* hover / press          */
+  --yellow-soft: #FFD500;  /* chip / panel fill      */
+  --yellow-ink:  #1C1917;  /* text on yellow         */
+
+  /* Blue - secondary (panels, chips, correct / selected state) */
+  --blue:      #1E8FC2;
+  --blue-600:  #177AA8;
+  --blue-soft: #177AA8;   /* = blue-600, white text 4.8:1 */
+  --blue-ink:  #FFFFFF;
+
+  /* Green - secondary support (chips, success) */
+  --green:      #00A651;
+  --green-600:  #078342;  /* hover / press, AA text shade */
+  --green-soft: #078342;  /* = green-600, white text 4.9:1 */
+  --green-ink:  #FFFFFF;
+
+  /* Red - danger / important / wrong (use sparingly) */
+  --red:      #E5322D;
+  --red-600:  #C92823;
+  --red-soft: #C92823;   /* = red-600, white text 5.5:1 */
+  --red-ink:  #FFFFFF;
+
+  /* Grape - 5th category tone (colour-coded groups), from the play palette */
+  --grape:      #7A5AC2;
+  --grape-soft: #7A5AC2;  /* white text 5.2:1 */
+  --grape-ink:  #FFFFFF;
+
+  /* Legacy role aliases - older edulab apps use these names */
+  --marigold: var(--yellow); --marigold-600: var(--yellow-600); --marigold-soft: var(--yellow-soft); --marigold-ink: var(--yellow-ink);
+  --teal:     var(--blue);   --teal-600:     var(--blue-600);   --teal-soft:     var(--blue-soft);   --teal-ink:     var(--blue-ink);
+  --sky:      var(--green);                                     --sky-soft:      var(--green-soft);  --sky-ink:      var(--green-ink);
+  --coral:    var(--red);    --coral-600:    var(--red-600);    --coral-soft:    var(--red-soft);    --coral-ink:    var(--red-ink);
+
+  /* Play palette - subject/category colours in the kids app */
+  --play-sun:    #FFD500;
+  --play-grass:  #00A651;
+  --play-berry:  #C6478B;
+  --play-grape:  #7A5AC2;
+  --play-sky:    #1E8FC2;
+  --play-coral:  #E5322D;
+
+  /* ---- Semantic ---- */
+  --success:      #00A651;  --success-soft: #078342;  --success-ink: #FFFFFF;
+  --warning:      #FFD500;  --warning-soft: #FFD500;  --warning-ink: #1C1917;
+  --danger:       #E5322D;  --danger-soft:  #C92823;  --danger-ink:  #FFFFFF;
+  --info:         #1E8FC2;  --info-soft:    #177AA8;  --info-ink:    #FFFFFF;
+
+  /* ---- Functional aliases ---- */
+  --bg:        var(--paper);
+  --fg:        var(--ink);
+  --fg-muted:  var(--ink-2);
+  --primary:   var(--yellow);
+  --on-primary:#1C1917;      /* dark text on yellow */
+  /* White gap + ink band: >= 3:1 on paper, sand, yellow and every chip fill.
+     Pair with `outline: 3px solid transparent` so forced-colours mode still shows focus. */
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--ink);
+  /* Range-slider track */
+  --track: color-mix(in srgb, var(--ink) 24%, transparent);
+
+  /* ============================================================
+     SPACING  (4pt base)
+     ============================================================ */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px; --sp-20: 80px; --sp-24: 96px;
+
+  /* ---- Radii (friendly, generous) ---- */
+  /* Page gutter (user decision 2026-11-07): content ~70% of the viewport on wide screens
+     (15% margin each side from ~1280px), never squeezed below 900px, 16-72px on phones/tablets.
+     Every full-width band, header row, page head and footer pads its content with it. */
+  --gutter: max(clamp(16px, 4vw, 72px), min(15vw, calc((100vw - 900px) / 2)));
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+
+  /* ---- Elevation - warm, low, soft ---- */
+  --shadow-sm: 0 1px 2px rgba(33,30,26,.10), 0 2px 6px rgba(33,30,26,.06);
+  --shadow-md: 0 6px 18px rgba(33,30,26,.12), 0 1px 3px rgba(33,30,26,.08);
+  --shadow-lg: 0 16px 40px rgba(33,30,26,.12), 0 3px 8px rgba(33,30,26,.06);
+  --shadow-primary:  0 8px 22px color-mix(in srgb, var(--yellow) 30%, transparent);
+  --shadow-marigold: var(--shadow-primary);   /* legacy alias */
+
+  /* ============================================================
+     TYPE SCALE (semantic sizes)
+     ============================================================ */
+  --display-font:  clamp(48px, 6vw, 72px);
+  --h1: 44px; --h2: 33px; --h3: 25px; --h4: 19px;
+  --body-lg: 18px; --body: 16px; --body-sm: 14px;
+  --caption: 13px; --overline: 12px;
+}
+
+/* ============================================================
+   SEMANTIC ELEMENT STYLES
+   Apply via element selectors or .edu-prose wrapper.
+   Element defaults are wrapped in :where(.edu) (zero specificity) so any
+   single class wins: <p class="edu-overline">, <p class="edu-small">,
+   <h1 class="app-title"> keep their own font/size instead of the element default.
+   ============================================================ */
+
+.edu-display, :where(.edu) h1.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--display-font);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+:where(.edu) h1, .edu-h1 {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: var(--h1);
+  line-height: 1.06; letter-spacing: -0.02em; color: var(--ink);
+}
+:where(.edu) h2, .edu-h2 {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: var(--h2);
+  line-height: 1.12; letter-spacing: -0.015em; color: var(--ink);
+}
+:where(.edu) h3, .edu-h3 {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: var(--h3);
+  line-height: 1.2; letter-spacing: -0.01em; color: var(--ink);
+}
+:where(.edu) h4, .edu-h4 {
+  font-family: var(--font-sans);
+  font-weight: 700; font-size: var(--h4);
+  line-height: 1.3; color: var(--ink);
+}
+:where(.edu) p, .edu-p, .edu-body {
+  font-family: var(--font-sans);
+  font-weight: 400; font-size: var(--body);
+  line-height: 1.6; color: var(--ink-2);
+}
+.edu-body-lg { font-family: var(--font-sans); font-size: var(--body-lg); line-height: 1.6; color: var(--ink-2); }
+.edu-small  { font-family: var(--font-sans); font-size: var(--body-sm); line-height: 1.5; color: var(--ink-2); }
+.edu-caption{ font-family: var(--font-sans); font-size: var(--caption); line-height: 1.45; color: var(--ink-3); }
+
+/* Overline - mono, tracked; functional labels only (never above page/section titles) */
+.edu-overline {
+  font-family: var(--font-mono);
+  font-weight: 500; font-size: var(--overline);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink);
+}
+:where(.edu) code, .edu-mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em; color: var(--ink);
+  background: var(--paper-3); padding: 0.12em 0.4em; border-radius: var(--r-xs);
+}
+
+/* Solid colour blocks (callouts, stat cards, chips): set background: var(--X-soft) and
+   color: var(--X-ink) on the block, add .edu-block, and every heading/paragraph inside
+   inherits that text colour instead of the default ink. */
+.edu-block, .edu-block h1, .edu-block h2, .edu-block h3, .edu-block h4, .edu-block p,
+.edu-block li, .edu-block small { color: inherit; }
+
+body.edu { background: var(--paper); color: var(--ink); font-family: var(--font-sans); }
+
+</style>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: 0; }
+:focus-visible { outline: 3px solid transparent; outline-offset: 2px; box-shadow: var(--focus-ring); }
+button { font: inherit; }
+
+/* ── Top menu ── */
+.edu-header { position: sticky; top: 0; z-index: 50; width: 100%; background: var(--paper); border-bottom: 1px solid var(--line-2); }
+.edu-header-inner { padding: 4px var(--gutter); display: flex; align-items: center; gap: 12px; }
+.edu-logo { width: 64px; height: 64px; display: block; margin-right: -6px; }
+.edu-wordmark { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -.02em; color: var(--ink); }
+.head-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.edu-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--paper-2); border-radius: var(--r-pill); }
+.edu-seg button { border: none; background: transparent; padding: 7px 14px; border-radius: var(--r-pill);
+  font-family: var(--font-sans); font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.edu-seg button.active { background: var(--yellow); color: var(--yellow-ink); }
+.pill-toggle { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); border-radius: var(--r-pill);
+  padding: 7px 16px; font-family: var(--font-display); font-weight: 600; cursor: pointer; }
+.pill-toggle[aria-pressed="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
+
+/* ── Page head ── */
+.page-head { padding: 16px var(--gutter) 12px; text-align: left; }
+.app-title { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.8rem, 2.6vw, 2.7rem);
+  letter-spacing: -.025em; line-height: 1.05; color: var(--ink); margin: 0 0 8px; }
+.edu-lead { font-size: 1rem; line-height: 1.5; color: var(--ink-2); margin: 0; }
+
+main { padding: 0 var(--gutter) 20px; }
+
+/* ── Hints ── */
+.hints { background: var(--yellow-soft); color: var(--yellow-ink); border-radius: var(--r-md); padding: 14px 20px; margin-bottom: 14px; }
+.hints[hidden] { display: none; }
+.hints ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 22px; counter-reset: h; }
+.hints li { counter-increment: h; font-size: 14.5px; line-height: 1.4; display: flex; gap: 10px; }
+.hints li::before { content: counter(h); flex: none; width: 24px; height: 24px; border-radius: var(--r-pill);
+  background: var(--ink); color: var(--yellow); font-family: var(--font-mono); font-size: 13px; display: grid; place-items: center; }
+.hints p { margin: 10px 0 0; font-size: 13.5px; color: inherit; }
+
+/* ── Card ── */
+.card { background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.card-head { padding: 8px 14px; background: var(--paper-2); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-head .edu-overline { margin: 0; letter-spacing: .08em; }
+.card-head .edu-seg { background: var(--paper-3); }
+.card-head .spacer { flex: 1; }
+.btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  padding: 7px 13px; font-size: 15px; font-family: var(--font-display); font-weight: 600; cursor: pointer; }
+.btn-ghost:hover { background: var(--paper-3); }
+.edu-btn { border: none; font-family: var(--font-display); font-weight: 600; background: var(--yellow); color: var(--on-primary);
+  border-radius: var(--r-pill); padding: 8px 15px; font-size: 15px; cursor: pointer; }
+.edu-btn:hover { background: var(--yellow-600); }
+.step-count { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.graph-wrap { padding: 10px 14px 2px; overflow-x: auto; }
+#graph { display: block; width: 100%; height: auto; min-width: 780px; user-select: none; -webkit-user-select: none; }
+
+/* ── Status strip ── */
+.status { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 10px 14px 12px; border-top: 1px dashed var(--line-2); }
+.st { border: 2px solid var(--line-2); border-radius: var(--r-md); padding: 7px 12px; display: flex; align-items: center; gap: 12px;
+  background: var(--surface); text-align: left; color: var(--ink); min-width: 0; }
+button.st { cursor: pointer; }
+button.st[aria-pressed="true"] { border-color: var(--ink); }
+.st svg { flex: none; width: 44px; height: 44px; border-radius: var(--r-xs); border: 1px solid var(--line-2); }
+.st .txt { min-width: 0; flex: 1; }
+.st .l1 { font-family: var(--font-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.st .l2 { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.25; }
+.chip { flex: none; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  padding: 4px 10px; border-radius: var(--r-pill); white-space: nowrap; }
+.chip.bad { background: var(--red-soft); color: var(--red-ink); }
+.chip.mid { background: var(--yellow-soft); color: var(--yellow-ink); }
+.chip.ok  { background: var(--green-soft); color: var(--green-ink); }
+.st.loss { flex-direction: column; align-items: stretch; gap: 3px; }
+.st.loss .row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.st.loss .val { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
+.meter { height: 8px; border-radius: var(--r-pill); background: var(--paper-3); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ink); border-radius: var(--r-pill); }
+.st.loss .goal { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+.st.loss.done { background: var(--green-soft); border-color: var(--green-soft); color: var(--green-ink); }
+.st.loss.done .l1, .st.loss.done .goal { color: inherit; }
+.st.loss.done .meter { background: var(--paper); }
+.st.loss.done .meter i { background: var(--paper); }
+
+/* ── SVG graph ── */
+#graph text { font-family: var(--font-mono); fill: var(--ink); }
+#graph .disp { font-family: var(--font-display); font-weight: 700; }
+#graph .muted { fill: var(--ink-3); }
+#graph .col-chip rect { rx: 10px; }
+#graph .col-chip text { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.c-grape rect { fill: var(--grape-soft); } .c-grape text { fill: var(--grape-ink) !important; }
+.c-ink rect { fill: var(--ink); } .c-ink text { fill: var(--paper) !important; }
+.c-yellow rect { fill: var(--yellow-soft); } .c-yellow text { fill: var(--yellow-ink) !important; }
+.c-blue rect { fill: var(--blue-soft); } .c-blue text { fill: var(--blue-ink) !important; }
+#graph .frame { fill: none; stroke: var(--grape); stroke-width: 2; }
+#graph .tcell { stroke: var(--line); stroke-width: 1; }
+#graph .tnum { font-size: 9.5px; text-anchor: middle; pointer-events: none; }
+#graph .dim { opacity: .28; }
+#graph .mark-pos { stroke: var(--blue-600); stroke-width: 2.5; }
+#graph .mark-neg { stroke: var(--red-600); stroke-width: 2.5; }
+#graph .arrow { stroke: var(--ink); stroke-width: 2; fill: none; }
+#graph .fan { fill: var(--paper-3); stroke: var(--line-2); stroke-width: 1; opacity: .55; }
+#graph .fan.on { fill: var(--yellow); stroke: var(--ink); opacity: .8; }
+#graph .hbox { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+#graph .hid { cursor: pointer; outline: none; }
+#graph .hid.on .hbox { fill: var(--yellow); }
+#graph .hid:focus-visible .hbox { stroke-width: 4; }
+#graph .w-pos { fill: var(--blue-600); } #graph .w-neg { fill: var(--red-600); } #graph .w-zero { fill: var(--paper-3); }
+#graph .hm { stroke: var(--surface); stroke-width: .5; }
+#graph .edge { fill: none; stroke-linecap: round; }
+#graph .edge.pos { stroke: var(--blue-600); } #graph .edge.neg { stroke: var(--red-600); }
+#graph .edge.zero { stroke: var(--line-strong); stroke-dasharray: 4 5; }
+#graph .knob { cursor: grab; outline: none; touch-action: none; }
+#graph .knob:active { cursor: grabbing; }
+#graph .knob .body { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; }
+#graph .knob .track { fill: none; stroke: var(--paper-3); stroke-width: 5; }
+#graph .knob .arc { fill: none; stroke-width: 5; stroke-linecap: round; }
+#graph .knob .arc.pos { stroke: var(--blue-600); } #graph .knob .arc.neg { stroke: var(--red-600); }
+#graph .knob .dot { fill: var(--ink); stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }
+#graph .knob .dot.pos { fill: var(--blue-600); } #graph .knob .dot.neg { fill: var(--red-600); }
+#graph .knob .val { font-size: 10.5px; font-weight: 500; text-anchor: middle; pointer-events: none; }
+#graph .knob:hover .body { fill: var(--paper-2); }
+#graph .knob:focus-visible .body { stroke: var(--ink); stroke-width: 4; }
+#graph .obox { fill: var(--surface); stroke: var(--line-strong); stroke-width: 2; }
+#graph .out.good .obox { stroke: var(--green-600); stroke-width: 4; }
+#graph .out.wrong .obox { stroke: var(--red-600); stroke-width: 4; }
+#graph .bar-track { fill: var(--paper-3); } #graph .bar-fill { fill: var(--ink); }
+#graph .rule { stroke: var(--line-2); stroke-width: 1; }
+#graph .t-pos { fill: var(--blue-600); } #graph .t-neg { fill: var(--red-600); }
+#graph .b { font-weight: 500; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .edu-logo { width: 48px; height: 48px; }
+  .hints ol { grid-template-columns: 1fr; }
+  .status { grid-template-columns: 1fr; }
+  .page-head { padding: 18px var(--gutter) 14px; }
+}
+</style>
+</head>
+<body class="edu">
+<header class="edu-header"><div class="edu-header-inner">
+  <img class="edu-logo" alt="edulab" src="edulab-mark-ink.png">
+  <span class="edu-wordmark">edulab</span>
+  <div class="head-tools">
+    <button class="pill-toggle" id="hintsBtn" type="button" aria-pressed="false" data-i18n="hintsBtn"></button>
+    <div class="edu-seg" role="group" aria-label="Język / Language">
+      <button type="button" data-lang="pl">PL</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+  </div>
+</div></header>
+
+<header class="page-head">
+  <h1 class="app-title" data-i18n="title"></h1>
+  <p class="edu-lead" data-i18n="lead"></p>
+</header>
+
+<main>
+  <div class="hints edu-block" id="hints" hidden>
+    <ol>
+      <li data-i18n="hint1"></li><li data-i18n="hint2"></li><li data-i18n="hint3"></li><li data-i18n="hint4"></li>
+    </ol>
+    <p data-i18n="hintNote"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="edu-overline" data-i18n="pickFace"></span>
+      <div class="edu-seg" id="faceSeg" role="group">
+        <button type="button" data-face="boy" data-i18n="boy"></button>
+        <button type="button" data-face="girl" data-i18n="girl"></button>
+      </div>
+      <span class="spacer"></span>
+      <span class="step-count" id="stepCount" aria-hidden="true"></span>
+      <button class="btn-ghost" id="resetBtn" type="button" data-i18n="reset"></button>
+      <button class="btn-ghost" id="randomBtn" type="button" data-i18n="random"></button>
+      <button class="edu-btn" id="trainBtn" type="button"></button>
+    </div>
+    <div class="graph-wrap"><svg id="graph" viewBox="0 0 960 402" role="group" aria-labelledby="graphTitle"><title id="graphTitle"></title></svg></div>
+    <div class="status" id="status">
+      <button class="st" type="button" data-face="boy"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
+      <button class="st" type="button" data-face="girl"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
+      <div class="st loss" id="lossBox">
+        <div class="row"><span class="l1" data-i18n="loss"></span><span class="val" id="lossVal"></span></div>
+        <div class="meter"><i id="lossBar"></i></div>
+        <div class="goal" id="goalText"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sr" aria-live="polite" id="live"></div>
+</main>
+
+<script>
+'use strict';
+// ─── Constants ───
+const SVGNS = 'http://www.w3.org/2000/svg';
+const W_MIN = -2, W_MAX = 2, W_STEP = 0.1, GOAL = 0.8;
+const OUT = ['boy', 'girl'];
+// Pixel darkness: 0 = light, 1 = dark. 0.2 skin, 0.9 hair, 1 eyes, 0.6 mouth.
+const FACES = {
+  boy: { label: 0, px: [
+    0, 0, .9, .9, .9, .9, 0, 0,
+    0, .9, .9, .9, .9, .9, .9, 0,
+    0, .9, .9, .9, .9, .9, .9, 0,
+    0, .2, 1, .2, .2, 1, .2, 0,
+    0, .2, .2, .2, .2, .2, .2, 0,
+    0, .2, .2, .6, .6, .2, .2, 0,
+    0, 0, .2, .2, .2, .2, 0, 0,
+    0, 0, 0, .2, .2, 0, 0, 0] },
+  girl: { label: 1, px: [
+    0, .9, .9, .9, .9, .9, .9, 0,
+    .9, .9, .9, .9, .9, .9, .9, .9,
+    .9, .9, .2, .2, .2, .2, .9, .9,
+    .9, .2, 1, .2, .2, 1, .2, .9,
+    .9, .2, .2, .2, .2, .2, .2, .9,
+    .9, .2, .2, .6, .6, .2, .2, .9,
+    .9, .9, .2, .2, .2, .2, .9, .9,
+    .9, .9, 0, .2, .2, 0, .9, .9] },
+};
+function weightMap(entries) {
+  const w = new Array(64).fill(0);
+  for (const [r, c, v] of entries) w[r * 8 + c] = v;
+  return w;
+}
+// Fixed first-layer weights (hand-designed detectors).
+const HIDDEN = [
+  { id: 'h1', w: weightMap([3, 4, 5, 6, 7].flatMap(r => [[r, 0, .1], [r, 7, .1]])
+      .concat([3, 4, 5].flatMap(r => [[r, 1, -.1], [r, 6, -.1]]))) },
+  { id: 'h2', w: weightMap([2, 3, 4, 5].map(c => [2, c, .25])) },
+  { id: 'h3', w: weightMap([[3, 2, .25], [3, 5, .25], [5, 3, .25], [5, 4, .25]]) },
+];
+const START_W = [[0.8, 0.2], [0.1, 0.9], [0.5, -0.3]];   // [hidden][output]
+const LR = 0.08, MAX_STEPS = 3000, STOP_AT = 0.82;
+
+const I18N = {
+  pl: {
+    docTitle: 'Sieć neuronowa jako graf obliczeń',
+    title: 'Sieć neuronowa jako graf obliczeń',
+    lead: 'Obraz zamienia się w liczby, liczby płyną przez sieć, a wagi decydują o wyniku. Ustaw pokrętła tak, żeby sieć rozpoznała obie twarze.',
+    hintsBtn: 'Wskazówki', pickFace: 'Twarz na wejściu', boy: 'chłopiec', girl: 'dziewczynka',
+    reset: 'Od nowa', random: 'Losowe wagi', train: 'Niech maszyna dostroi', stop: 'Zatrzymaj', step: 'krok',
+    colImage: 'Obraz', colTensor: 'Tensor 8 × 8', colHidden: 'Warstwa ukryta, wagi stałe', colKnobs: 'Pokrętła = wagi', colOut: 'Wyjścia',
+    tensorCap: '64 liczby: 0 = jasny piksel, 1 = ciemny',
+    hiddenCap: '{id} = ReLU(suma piksel × waga) = ReLU({pre}) = {a}',
+    h1: 'włosy po bokach', h2: 'grzywka', h3: 'oczy i usta',
+    sum: 'suma', face: 'Twarz', says: 'Sieć mówi',
+    bad: 'źle', mid: 'dobrze, ale niepewnie', ok: 'dobrze',
+    loss: 'Błąd sieci', goal: 'Cel: obie twarze rozpoznane z pewnością co najmniej 80%.',
+    done: 'Udało się: te same wagi działają dla obu twarzy.',
+    knob: 'Waga {h} → {o}', graphTitle: 'Graf obliczeń sieci neuronowej',
+    hint1: 'Wybierz twarz. Jej piksele to 64 liczby w tensorze.',
+    hint2: 'Wskaż neuron ukryty, żeby zobaczyć, na które piksele patrzy.',
+    hint3: 'Kręć pokrętłami: złap i obracaj wokół środka, użyj kółka myszy albo strzałek.',
+    hint4: 'Sprawdź obie twarze. Te same wagi muszą działać dla obu.',
+    hintNote: 'To dwa rysunki, nie ludzie: sieć szuka różnic między obrazkami. Niebieski = waga dodatnia, czerwony = ujemna.',
+  },
+  en: {
+    docTitle: 'A neural network as a computation graph',
+    title: 'A neural network as a computation graph',
+    lead: 'An image becomes numbers, the numbers flow through the network, and the weights decide the result. Turn the knobs until the network recognises both faces.',
+    hintsBtn: 'Hints', pickFace: 'Input face', boy: 'boy', girl: 'girl',
+    reset: 'Reset', random: 'Random weights', train: 'Let the machine tune it', stop: 'Stop', step: 'step',
+    colImage: 'Image', colTensor: 'Tensor 8 × 8', colHidden: 'Hidden layer, fixed weights', colKnobs: 'Knobs = weights', colOut: 'Outputs',
+    tensorCap: '64 numbers: 0 = light pixel, 1 = dark',
+    hiddenCap: '{id} = ReLU(sum of pixel × weight) = ReLU({pre}) = {a}',
+    h1: 'hair at the sides', h2: 'fringe', h3: 'eyes and mouth',
+    sum: 'sum', face: 'Face', says: 'Network says',
+    bad: 'wrong', mid: 'right, but unsure', ok: 'correct',
+    loss: 'Network error', goal: 'Goal: both faces recognised with at least 80% confidence.',
+    done: 'Done: the same weights work for both faces.',
+    knob: 'Weight {h} → {o}', graphTitle: 'Computation graph of the neural network',
+    hint1: 'Pick a face. Its pixels are the 64 numbers in the tensor.',
+    hint2: 'Point at a hidden neuron to see which pixels it looks at.',
+    hint3: 'Turn the knobs: grab and rotate around the centre, use the mouse wheel or the arrow keys.',
+    hint4: 'Check both faces. The same weights must work for both.',
+    hintNote: 'These are two drawings, not people: the network looks for differences between the pictures. Blue = positive weight, red = negative.',
+  },
+};
+
+// Geometry (viewBox units)
+const G = {
+  cy: 212, img: { x: 4, cell: 15 }, ten: { x: 156, cell: 27 },
+  hid: { x: 438, w: 130, h: 84, ys: [84, 212, 340] },
+  out: { x: 742, w: 214, h: 160, ys: [112, 312] },
+  knobT: [0.3, 0.6], knobR: 18,
+};
+
+// ─── State ───
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
+const state = {
+  lang: store.get('nn-lang') === 'en' ? 'en' : 'pl',
+  hints: store.get('nn-hints') === '1',
+  face: 'boy',
+  W: START_W.map(r => r.slice()),
+  focusHidden: null, pinnedHidden: null,
+  training: false, steps: 0, raf: 0,
+};
+
+// ─── DOM refs ───
+const $ = s => document.querySelector(s);
+const graph = $('#graph');
+const refs = { img: [], tcell: [], tnum: [], fans: [], hid: [], hval: [], edges: [], knobs: [], outs: [] };
+
+// ─── Helpers: the network (pure) ───
+function hiddenOf(px) {
+  return HIDDEN.map(n => {
+    let pre = 0;
+    for (let j = 0; j < 64; j++) pre += n.w[j] * px[j];
+    return { pre, a: Math.max(0, pre) };
+  });
+}
+function forward(faceKey, W) {
+  const hid = hiddenOf(FACES[faceKey].px);
+  const h = hid.map(x => x.a);
+  const z = OUT.map((_, k) => h.reduce((s, hi, i) => s + hi * W[i][k], 0));
+  const m = Math.max(...z);
+  const e = z.map(v => Math.exp(v - m));
+  const es = e.reduce((a, b) => a + b, 0);
+  const p = e.map(v => v / es);
+  return { hid, h, z, p, pred: p[1] > p[0] ? 1 : 0 };
+}
+function loss(W) {
+  const keys = Object.keys(FACES);
+  return keys.reduce((s, k) => s - Math.log(forward(k, W).p[FACES[k].label]), 0) / keys.length;
+}
+function gradStep(W, lr) {
+  const keys = Object.keys(FACES);
+  const g = W.map(r => r.map(() => 0));
+  for (const key of keys) {
+    const f = forward(key, W);
+    for (let i = 0; i < W.length; i++)
+      for (let k = 0; k < OUT.length; k++)
+        g[i][k] += f.h[i] * (f.p[k] - (FACES[key].label === k ? 1 : 0)) / keys.length;
+  }
+  return W.map((r, i) => r.map((w, k) => clamp(w - lr * g[i][k])));
+}
+function solved(W) {
+  return Object.keys(FACES).every(k => forward(k, W).p[FACES[k].label] >= GOAL);
+}
+
+// ─── Helpers: misc ───
+const clamp = v => Math.min(W_MAX, Math.max(W_MIN, v));
+const snap = v => Math.round(v / W_STEP) * W_STEP;
+const t = (key, vars) => (I18N[state.lang][key] || key).replace(/\{(\w+)\}/g, (_, k) => vars[k]);
+function fmt(v, d = 2) {
+  if (Math.abs(v) < 0.5 / Math.pow(10, d)) v = 0;
+  return v.toFixed(d).replace('-', '−');
+}
+const pct = p => Math.floor(p * 100 + 1e-9) + '%';
+function grey(v) {   // 0 = white, 1 = ink (#1C1917)
+  const c = [255 - v * (255 - 28), 255 - v * (255 - 25), 255 - v * (255 - 23)].map(Math.round);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function el(tag, attrs, parent, text) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const signClass = w => Math.abs(w) < 0.005 ? 'zero' : (w > 0 ? 'pos' : 'neg');
+function edgeGeom(i, k) {
+  const x1 = G.hid.x + G.hid.w, y1 = G.hid.ys[i], x2 = G.out.x, y2 = G.out.ys[k], tt = G.knobT[k];
+  return { x1, y1, x2, y2, kx: x1 + (x2 - x1) * tt, ky: y1 + (y2 - y1) * tt };
+}
+
+// ─── Build (once) ───
+function buildGraph() {
+  const chip = (x, w, cls, key) => {
+    const g = el('g', { class: 'col-chip ' + cls }, graph);
+    el('rect', { x, y: 2, width: w, height: 20 }, g);
+    el('text', { x: x + 10, y: 15.5, 'data-i18n': key }, g);
+  };
+  chip(G.img.x, 120, 'c-grape', 'colImage');
+  chip(G.ten.x, 216, 'c-grape', 'colTensor');
+  chip(G.hid.x - 44, 208, 'c-ink', 'colHidden');
+  chip(G.hid.x + G.hid.w + 40, 122, 'c-yellow', 'colKnobs');
+  chip(G.out.x, G.out.w, 'c-blue', 'colOut');
+
+  // image
+  const ic = G.img.cell, iy = G.cy - ic * 4;
+  for (let j = 0; j < 64; j++)
+    refs.img.push(el('rect', { x: G.img.x + (j % 8) * ic, y: iy + Math.floor(j / 8) * ic, width: ic + .3, height: ic + .3 }, graph));
+  el('rect', { class: 'frame', x: G.img.x - 1, y: iy - 1, width: ic * 8 + 2, height: ic * 8 + 2, rx: 3 }, graph);
+  const ax = G.img.x + ic * 8 + 5;
+  el('path', { class: 'arrow', d: `M${ax} ${G.cy} H${G.ten.x - 7} m-6 -5 l6 5 l-6 5` }, graph);
+
+  // fans tensor -> hidden (drawn under the tensor)
+  const tc = G.ten.cell, ty = G.cy - tc * 4, tx2 = G.ten.x + tc * 8;
+  HIDDEN.forEach((n, i) => refs.fans.push(el('path', { class: 'fan',
+    d: `M${tx2 + 3} ${ty} L${G.hid.x} ${G.hid.ys[i]} L${tx2 + 3} ${ty + tc * 8} Z` }, graph)));
+
+  // tensor
+  for (let j = 0; j < 64; j++) {
+    const x = G.ten.x + (j % 8) * tc, y = ty + Math.floor(j / 8) * tc;
+    refs.tcell.push(el('rect', { class: 'tcell', x, y, width: tc, height: tc }, graph));
+    refs.tnum.push(el('text', { class: 'tnum', x: x + tc / 2, y: y + tc / 2 + 3.5 }, graph));
+  }
+  el('rect', { class: 'frame', x: G.ten.x - 2, y: ty - 2, width: tc * 8 + 4, height: tc * 8 + 4, rx: 4 }, graph);
+  refs.cap = el('text', { class: 'muted', x: G.ten.x + tc * 4, y: ty + tc * 8 + 22, 'text-anchor': 'middle', 'font-size': 10.5 }, graph);
+
+  // edges (under knobs and boxes)
+  HIDDEN.forEach((n, i) => { refs.edges.push([]); OUT.forEach((o, k) => {
+    const e = edgeGeom(i, k);
+    refs.edges[i].push(el('path', { class: 'edge', d: `M${e.x1} ${e.y1} L${e.x2} ${e.y2}` }, graph));
+  }); });
+
+  // hidden neurons
+  HIDDEN.forEach((n, i) => {
+    const y = G.hid.ys[i], g = el('g', { class: 'hid', tabindex: 0, role: 'button', 'data-hid': i }, graph);
+    el('rect', { class: 'hbox', x: G.hid.x, y: y - G.hid.h / 2, width: G.hid.w, height: G.hid.h, rx: 12 }, g);
+    for (let j = 0; j < 64; j++)
+      el('rect', { class: 'hm w-' + signClass(n.w[j]), x: G.hid.x + 10 + (j % 8) * 8, y: y - 32 + Math.floor(j / 8) * 8, width: 8, height: 8 }, g);
+    el('text', { x: G.hid.x + 84, y: y - 12, 'font-size': 12 }, g, n.id);
+    refs.hval.push(el('text', { class: 'disp', x: G.hid.x + 84, y: y + 14, 'font-size': 19 }, g));
+    el('text', { class: 'muted', x: G.hid.x + G.hid.w / 2, y: y + G.hid.h / 2 + 15, 'text-anchor': 'middle', 'font-size': 10.5, 'data-i18n': n.id }, graph);
+    refs.hid.push(g);
+  });
+
+  // outputs
+  OUT.forEach((o, k) => {
+    const top = G.out.ys[k] - G.out.h / 2, x = G.out.x, g = el('g', { class: 'out' }, graph);
+    el('rect', { class: 'obox', x, y: top, width: G.out.w, height: G.out.h, rx: 14 }, g);
+    el('text', { class: 'disp', x: x + 14, y: top + 30, 'font-size': 16, 'data-i18n': o }, g);
+    const prob = el('text', { class: 'disp', x: x + G.out.w - 14, y: top + 31, 'font-size': 22, 'text-anchor': 'end' }, g);
+    el('rect', { class: 'bar-track', x: x + 14, y: top + 40, width: G.out.w - 28, height: 8, rx: 4 }, g);
+    const bar = el('rect', { class: 'bar-fill', x: x + 14, y: top + 40, width: 0, height: 8, rx: 4 }, g);
+    const lines = HIDDEN.map((n, i) => el('text', { x: x + 14, y: top + 68 + i * 18, 'font-size': 11.5 }, g));
+    el('line', { class: 'rule', x1: x + 14, x2: x + G.out.w - 14, y1: top + 113, y2: top + 113 }, g);
+    const sum = el('text', { class: 'b', x: x + 14, y: top + 131, 'font-size': 12 }, g);
+    const soft = el('text', { class: 'muted', x: x + 14, y: top + 149, 'font-size': 11 }, g);
+    refs.outs.push({ g, prob, bar, lines, sum, soft });
+  });
+
+  // knobs (on top)
+  HIDDEN.forEach((n, i) => { refs.knobs.push([]); OUT.forEach((o, k) => {
+    const e = edgeGeom(i, k), R = G.knobR;
+    const g = el('g', { class: 'knob', tabindex: 0, role: 'slider', 'aria-valuemin': W_MIN, 'aria-valuemax': W_MAX,
+      'data-i': i, 'data-k': k, transform: `translate(${e.kx} ${e.ky})` }, graph);
+    el('circle', { class: 'body', r: R + 4 }, g);
+    const a = 135 * Math.PI / 180;
+    el('path', { class: 'track', d: `M${-R * Math.sin(a)} ${-R * Math.cos(a)} A${R} ${R} 0 1 1 ${R * Math.sin(a)} ${-R * Math.cos(a)}` }, g);
+    const arc = el('path', { class: 'arc' }, g);
+    const dot = el('circle', { class: 'dot', r: 5 }, g);
+    const val = el('text', { class: 'val', y: 4 }, g);
+    refs.knobs[i].push({ g, arc, dot, val });
+  }); });
+
+  // status thumbnails
+  document.querySelectorAll('#status button.st').forEach(b => {
+    const svg = b.querySelector('svg');
+    FACES[b.dataset.face].px.forEach((v, j) => el('rect', { x: j % 8, y: Math.floor(j / 8), width: 1.03, height: 1.03, fill: grey(v) }, svg));
+  });
+}
+
+// ─── Render ───
+function applyLang() {
+  document.documentElement.lang = state.lang;
+  document.title = t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n || n.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+  $('#graphTitle').textContent = t('graphTitle');
+  render();
+}
+function render() {
+  const f = forward(state.face, state.W), px = FACES[state.face].px;
+  const active = state.focusHidden !== null ? state.focusHidden : state.pinnedHidden;
+
+  // image + tensor
+  for (let j = 0; j < 64; j++) {
+    refs.img[j].setAttribute('fill', grey(px[j]));
+    const c = refs.tcell[j], n = refs.tnum[j];
+    c.setAttribute('fill', grey(px[j] * 0.16));
+    n.textContent = px[j].toFixed(1);
+    let cls = 'tcell', ncls = 'tnum';
+    if (active !== null) {
+      const w = HIDDEN[active].w[j];
+      if (w > 0) cls += ' mark-pos'; else if (w < 0) cls += ' mark-neg'; else { cls += ' dim'; ncls += ' dim'; }
+    }
+    c.setAttribute('class', cls); n.setAttribute('class', ncls);
+  }
+  if (active !== null) {   // bring marked cells to the front so their outline is not covered
+    refs.cap.textContent = t('hiddenCap', { id: HIDDEN[active].id, pre: fmt(f.hid[active].pre), a: fmt(f.h[active]) });
+  } else refs.cap.textContent = t('tensorCap');
+
+  // hidden
+  HIDDEN.forEach((n, i) => {
+    refs.hval[i].textContent = fmt(f.h[i]);
+    refs.hid[i].classList.toggle('on', active === i);
+    refs.hid[i].setAttribute('aria-pressed', state.pinnedHidden === i);
+    refs.hid[i].setAttribute('aria-label', `${n.id}: ${t(n.id)}, ${fmt(f.h[i])}`);
+    refs.fans[i].setAttribute('class', 'fan' + (active === i ? ' on' : ''));
+  });
+
+  // edges + knobs
+  HIDDEN.forEach((n, i) => OUT.forEach((o, k) => {
+    const w = state.W[i][k], sc = signClass(w), kn = refs.knobs[i][k], R = G.knobR;
+    const e = refs.edges[i][k];
+    e.setAttribute('class', 'edge ' + sc);
+    e.setAttribute('stroke-width', sc === 'zero' ? 1.5 : 1.5 + Math.abs(w) * 3);
+    const th = w / W_MAX * 135 * Math.PI / 180;
+    kn.dot.setAttribute('cx', R * Math.sin(th)); kn.dot.setAttribute('cy', -R * Math.cos(th));
+    kn.dot.setAttribute('class', 'dot ' + sc);
+    if (sc === 'zero') kn.arc.setAttribute('d', '');
+    else {
+      kn.arc.setAttribute('d', `M0 ${-R} A${R} ${R} 0 0 ${w > 0 ? 1 : 0} ${R * Math.sin(th)} ${-R * Math.cos(th)}`);
+    }
+    kn.arc.setAttribute('class', 'arc ' + sc);
+    kn.val.textContent = fmt(w);
+    kn.g.setAttribute('aria-valuenow', w.toFixed(2));
+    kn.g.setAttribute('aria-label', t('knob', { h: n.id, o: t(o) }));
+  }));
+
+  // outputs
+  const label = FACES[state.face].label;
+  OUT.forEach((o, k) => {
+    const r = refs.outs[k];
+    r.prob.textContent = pct(f.p[k]);
+    r.bar.setAttribute('width', Math.max(0, (G.out.w - 28) * f.p[k]));
+    HIDDEN.forEach((n, i) => {
+      const w = state.W[i][k], sc = signClass(w);
+      r.lines[i].innerHTML = '';
+      el('tspan', { class: 'muted' }, r.lines[i], n.id + '  ');
+      el('tspan', {}, r.lines[i], fmt(f.h[i]) + ' × ');
+      el('tspan', { class: sc === 'zero' ? '' : 't-' + sc }, r.lines[i], fmt(w));
+      el('tspan', {}, r.lines[i], ' = ');
+      el('tspan', { class: 'b' }, r.lines[i], fmt(f.h[i] * w));
+    });
+    r.sum.textContent = `${t('sum')} z = ${fmt(f.z[k])}`;
+    r.soft.textContent = `softmax(z) → ${pct(f.p[k])}`;
+    const isPred = f.pred === k;
+    r.g.setAttribute('class', 'out' + (isPred ? (k === label ? ' good' : ' wrong') : ''));
+  });
+
+  // status strip (both faces, always)
+  document.querySelectorAll('#status button.st').forEach(b => {
+    const key = b.dataset.face, ff = forward(key, state.W), lab = FACES[key].label;
+    const right = ff.pred === lab, sure = ff.p[lab] >= GOAL;
+    b.setAttribute('aria-pressed', key === state.face);
+    b.querySelector('.l1').textContent = `${t('face')}: ${t(key)}`;
+    b.querySelector('.l2').textContent = `${t('says')}: ${t(OUT[ff.pred])} ${pct(ff.p[ff.pred])}`;
+    const chip = b.querySelector('.chip'), st = !right ? 'bad' : (sure ? 'ok' : 'mid');
+    chip.className = 'chip ' + st; chip.textContent = t(st);
+    b.dataset.state = st;
+  });
+  const L = loss(state.W), done = solved(state.W);
+  $('#lossVal').textContent = fmt(L);
+  $('#lossBar').style.width = Math.min(100, L / 1.5 * 100) + '%';
+  $('#lossBox').classList.toggle('done', done);
+  $('#goalText').textContent = t(done ? 'done' : 'goal');
+  if (done !== render.wasDone) { render.wasDone = done; if (done) $('#live').textContent = t('done'); }
+
+  // toolbar
+  document.querySelectorAll('#faceSeg button').forEach(b => {
+    b.classList.toggle('active', b.dataset.face === state.face);
+    b.setAttribute('aria-pressed', b.dataset.face === state.face);
+  });
+  $('#trainBtn').textContent = t(state.training ? 'stop' : 'train');
+  $('#stepCount').textContent = state.steps ? `${t('step')} ${state.steps}` : '';
+  $('#hints').hidden = !state.hints;
+  $('#hintsBtn').setAttribute('aria-pressed', state.hints);
+}
+
+// ─── Actions ───
+function setWeight(i, k, v) { stopTraining(); state.W[i][k] = clamp(snap(v)); state.steps = 0; render(); }
+function setWeights(W) { stopTraining(); state.W = W.map(r => r.map(clamp)); state.steps = 0; render(); }
+function stopTraining() { if (state.training) { state.training = false; cancelAnimationFrame(state.raf); } }
+function trainTick() {
+  if (!state.training) return;
+  state.W = gradStep(state.W, LR); state.steps++;
+  const goalMet = Object.keys(FACES).every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT);
+  if (goalMet || state.steps >= MAX_STEPS) state.training = false;
+  else state.raf = requestAnimationFrame(trainTick);
+  render();
+}
+function toggleTraining() {
+  if (state.training) { stopTraining(); render(); return; }
+  state.training = true; state.steps = 0;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    while (state.training) {
+      state.W = gradStep(state.W, LR); state.steps++;
+      if (Object.keys(FACES).every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT) || state.steps >= MAX_STEPS) state.training = false;
+    }
+    render();
+  } else trainTick();
+}
+
+// ─── Listeners ───
+function bind() {
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => {
+    state.lang = b.dataset.lang; store.set('nn-lang', state.lang); applyLang();
+  }));
+  $('#hintsBtn').addEventListener('click', () => { state.hints = !state.hints; store.set('nn-hints', state.hints ? '1' : '0'); render(); });
+  document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => { state.face = b.dataset.face; render(); }));
+  $('#resetBtn').addEventListener('click', () => setWeights(START_W));
+  $('#randomBtn').addEventListener('click', () => setWeights(START_W.map(r => r.map(() => snap(Math.random() * 4 - 2)))));
+  $('#trainBtn').addEventListener('click', toggleTraining);
+
+  refs.hid.forEach((g, i) => {
+    g.addEventListener('pointerenter', () => { state.focusHidden = i; render(); });
+    g.addEventListener('pointerleave', () => { state.focusHidden = null; render(); });
+    g.addEventListener('focus', () => { state.focusHidden = i; render(); });
+    g.addEventListener('blur', () => { state.focusHidden = null; render(); });
+    const pin = () => { state.pinnedHidden = state.pinnedHidden === i ? null : i; render(); };
+    g.addEventListener('click', pin);
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pin(); } });
+  });
+
+  refs.knobs.forEach((row, i) => row.forEach((kn, k) => {
+    let drag = null;
+    kn.g.addEventListener('pointerdown', e => {
+      kn.g.setPointerCapture(e.pointerId); kn.g.focus({ preventScroll: true });
+      const r = kn.g.querySelector('.body').getBoundingClientRect();
+      drag = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, side: Math.sign(state.W[i][k]) }; e.preventDefault();
+    });
+    kn.g.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.cx, dy = e.clientY - drag.cy;
+      if (dx * dx + dy * dy < 36) return;                     // too close to the centre: angle is unstable
+      let deg = Math.atan2(dx, -dy) * 180 / Math.PI;           // 0 = top, clockwise positive
+      if (Math.abs(deg) > 135) deg = 135 * (drag.side || Math.sign(deg));   // bottom gap: stay at the end last used
+      else drag.side = Math.sign(deg);
+      const v = clamp(snap(deg / 135 * W_MAX));
+      if (Math.abs(v - state.W[i][k]) > 1e-9) setWeight(i, k, v);
+    });
+    const end = () => { drag = null; };
+    kn.g.addEventListener('pointerup', end); kn.g.addEventListener('pointercancel', end);
+    kn.g.addEventListener('wheel', e => { e.preventDefault(); setWeight(i, k, state.W[i][k] + (e.deltaY < 0 ? W_STEP : -W_STEP)); }, { passive: false });
+    kn.g.addEventListener('keydown', e => {
+      const w = state.W[i][k];
+      const map = { ArrowUp: w + W_STEP, ArrowRight: w + W_STEP, ArrowDown: w - W_STEP, ArrowLeft: w - W_STEP,
+        PageUp: w + 0.5, PageDown: w - 0.5, Home: W_MIN, End: W_MAX, '0': 0 };
+      if (e.key in map) { e.preventDefault(); e.stopPropagation(); setWeight(i, k, map[e.key]); }
+    });
+  }));
+
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === '1') { state.face = 'boy'; render(); }
+    else if (e.key === '2') { state.face = 'girl'; render(); }
+    else if (e.key === 'h' || e.key === 'H') $('#hintsBtn').click();
+  });
+}
+
+// ─── Init ───
+buildGraph();
+bind();
+applyLang();
+window.__nn = { FACES, HIDDEN, OUT, GOAL, START_W, state, forward, loss, gradStep, solved, setWeights };
+
+// ─── Reveal ───
+const FONT_WAIT_MS = 1500;
+const BRAND_FONTS = ['400 1em Outfit', '700 1em Outfit', '400 1em "IBM Plex Sans"', '600 1em "IBM Plex Sans"', '400 1em "Roboto Mono"'];
+Promise.race([
+  Promise.all(BRAND_FONTS.map(f => document.fonts.load(f).catch(() => null))),
+  new Promise(r => setTimeout(r, FONT_WAIT_MS)),
+]).then(() => document.documentElement.classList.add('app-ready'));
+</script>
+</body>
+</html>
