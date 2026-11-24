@@ -599,16 +599,29 @@ const HIDDEN = [
 const START_W = [[0.8, 0.2], [0.1, 0.9], [0.5, -0.3]];   // [hidden][output]
 const LR = 0.08, MAX_STEPS = 3000, STOP_AT = 0.82;
 
-// LLM tab: a next-word predictor. One row of weights per input word (a bigram model).
+// LLM tab: a next-word predictor. One row of weights per input word (7 words, no punctuation).
 const LM_VOCAB = {
-  pl: ['kot', 'pies', 'lubi', 'pije', 'gryzie', 'mleko', 'kości', '.'],
-  en: ['cat', 'dog', 'likes', 'drinks', 'chews', 'milk', 'bones', '.'],
+  pl: ['kot', 'pies', 'lubi', 'pije', 'gryzie', 'mleko', 'kości'],
+  en: ['cat', 'dog', 'likes', 'drinks', 'chews', 'milk', 'bones'],
 };
-const LM_V = 8, LM_END = 7;
-const LM_TEXT = [0, 2, 5, 7,  1, 2, 6, 7,  0, 3, 5, 7,  1, 4, 6, 7];   // 4 sentences, 15 (word, next word) pairs
-const LM_PAIRS = LM_TEXT.length - 1;
-const LM_W_MAX = 3, LM_LR = 1.5, LM_GOAL = 0.5, LM_STOP_AT = 0.47, LM_MAX_STEPS = 1500;
-const LM_BAD = 0.2, LM_OK = 0.4, LM_GEN_MAX = 7, LM_GEN_MS = 520;
+const LM_V = 7, LM_SENT_LEN = 3;
+const LM_TEXT = [0, 2, 5,  1, 2, 6,  0, 3, 5,  1, 4, 6];   // 4 simple 3-word sentences
+const LM_PAIR_POS = LM_TEXT.map((_, i) => i).filter(i => i % LM_SENT_LEN < LM_SENT_LEN - 1); // 8 (word, next word) pairs
+const LM_PAIRS = LM_PAIR_POS.length;
+const LM_STARTS = [0, 1];                                   // sentences start with kot/pies
+// Linguistic similarity prior (used with label smoothing during training so non-winning chances are realistic & > 0%)
+const LM_PRIOR = [
+  [0.014, 0.026, 0.080, 0.070, 0.095, 0.048, 0.032], // after kot/cat
+  [0.026, 0.014, 0.080, 0.095, 0.070, 0.032, 0.048], // after pies/dog
+  [0.052, 0.068, 0.014, 0.034, 0.022, 0.085, 0.085], // after lubi/likes
+  [0.058, 0.042, 0.030, 0.012, 0.020, 0.095, 0.105], // after pije/drinks
+  [0.042, 0.058, 0.030, 0.020, 0.012, 0.105, 0.095], // after gryzie/chews
+  [0.240, 0.200, 0.150, 0.130, 0.110, 0.060, 0.110], // after mleko/milk
+  [0.200, 0.240, 0.150, 0.110, 0.130, 0.110, 0.060], // after kości/bones
+].map(r => { const s = r.reduce((a, b) => a + b, 0); return r.map(x => x / s); });
+const LM_SMOOTH = 0.28;
+const LM_W_MAX = 2.0, LM_LR = 1.2, LM_GOAL = 0.80, LM_STOP_AT = 0.76, LM_MAX_STEPS = 1200;
+const LM_BAD = 0.2, LM_OK = 0.35, LM_GEN_MS = 520;
 
 const I18N = {
   pl: {
@@ -643,7 +656,7 @@ const I18N = {
     lmWindow: 'Okno w tekście', lmPrevLabel: 'Poprzednie słowo', lmNextLabel: 'Następne słowo', lmGenBtn: 'Napisz zdanie',
     lmColText: 'Tekst treningowy', lmColIn: 'Słowo na wejściu', lmColKnobs: 'Pokrętła = wagi', lmColOut: 'Szanse następnego słowa (softmax)',
     lmCap1: 'żółte: słowo na wejściu', lmCap2: 'zielona ramka: odpowiedź z tekstu',
-    lmToken: 'słowo #{id} (token)', lmInCap: '1 wybiera wiersz 8 pokręteł', lmTag: '✓ z tekstu',
+    lmToken: 'słowo #{id} (token)', lmInCap: '1 wybiera wiersz 7 pokręteł', lmTag: '✓ z tekstu',
     lmPair: 'Po „{c}” w tekście jest „{n}”', lmGives: 'Model daje mu {p}',
     lmGenPair: 'Model pisze dalej po „{c}”', lmGenPick: 'Wylosował „{n}”, miało {p} szans',
     lmWrites: 'Model pisze', lmLoss: 'Błąd modelu', lmGenEmpty: 'Kliknij „Napisz zdanie”', lmInText: 'jest w tekście', lmNew: 'nowe zdanie',
@@ -652,13 +665,13 @@ const I18N = {
     lmNoteNew: 'Model widzi tylko 1 poprzednie słowo — dlatego łączy wzorce w nowe zdanie.',
     lmLegendDrag: 'Pokrętła: przeciągnij góra/dół, kliknij boki lub użyj rolki',
     lmLegendPos: 'większa szansa (+)', lmLegendNeg: 'mniejsza szansa (−)',
-    lmLegendClick: 'Kliknij dowolne słowo w tekście po lewej',
-    lmGoal: 'Cel: błąd poniżej 0.50 (im mniej, tym lepiej). Zera nie będzie: po „{c}” raz jest „{a}”, raz „{b}”.',
+    lmLegendClick: 'Kliknij słowo w tekście po lewej',
+    lmGoal: 'Cel: błąd poniżej 0.80. Zera nie będzie: po „{c}” raz jest „{a}”, raz „{b}”, a każde słowo zachowuje małą szansę.',
     lmDone: 'Udało się: model zgaduje następne słowo tak dobrze, jak pozwala ten tekst.',
-    lmKnob: 'Waga: po „{c}” słowo „{n}”', lmGraphTitle: 'Model przewidujący następne słowo', lmTokLabel: 'Słowo {i} z 16: {w}',
+    lmKnob: 'Waga: po „{c}” słowo „{n}”', lmGraphTitle: 'Model przewidujący następne słowo', lmTokLabel: 'Słowo {i} z 12: {w}',
     lmHint1: 'Kliknij słowo w tekście albo użyj strzałek. Następne słowo to odpowiedź: nikt nie musi jej podpisywać.',
     lmHint2: 'Kręć pokrętłami (przeciągnij góra/dół lub użyj rolki): każde ustawia szansę jednego słowa po słowie na wejściu.',
-    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia wszystkie 64 wagi (8 słów × 8 pokręteł).',
+    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia wszystkie 49 wag (7 słów × 7 pokręteł).',
     lmHint4: 'Napisz zdanie: model losuje słowo po słowie według swoich szans. Czasem powstaje zdanie, którego nie było w tekście.',
     lmHintNote: 'Prawdziwy model ma miliardy wag, widzi tysiące słów wstecz i czyta ogromne zbiory tekstu. Ten widzi tylko jedno słowo wstecz, ale pętla jest ta sama: zgadnij, sprawdź, popraw.',
   },
@@ -694,7 +707,7 @@ const I18N = {
     lmWindow: 'Window in the text', lmPrevLabel: 'Previous word', lmNextLabel: 'Next word', lmGenBtn: 'Write a sentence',
     lmColText: 'Training text', lmColIn: 'Input word', lmColKnobs: 'Knobs = weights', lmColOut: 'Chances of the next word (softmax)',
     lmCap1: 'yellow: the input word', lmCap2: 'green frame: the answer from the text',
-    lmToken: 'word #{id} (token)', lmInCap: '1 picks this word’s 8 knobs', lmTag: '✓ in the text',
+    lmToken: 'word #{id} (token)', lmInCap: '1 picks this word’s 7 knobs', lmTag: '✓ in the text',
     lmPair: 'After “{c}” the text has “{n}”', lmGives: 'The model gives it {p}',
     lmGenPair: 'The model writes on after “{c}”', lmGenPick: 'It drew “{n}”, which had a {p} chance',
     lmWrites: 'The model writes', lmLoss: 'Model error', lmGenEmpty: 'Click “Write a sentence”', lmInText: 'is in the text', lmNew: 'new sentence',
@@ -703,13 +716,13 @@ const I18N = {
     lmNoteNew: 'The model sees only 1 previous word — so it combines patterns into a new sentence.',
     lmLegendDrag: 'Knobs: drag up/down, click sides or scroll',
     lmLegendPos: 'higher chance (+)', lmLegendNeg: 'lower chance (−)',
-    lmLegendClick: 'Click any word in the text on the left',
-    lmGoal: 'Goal: error below 0.50 (lower is better). It cannot reach zero: after “{c}” the text has “{a}” once and “{b}” once.',
+    lmLegendClick: 'Click a word in the text on the left',
+    lmGoal: 'Goal: error below 0.80. It cannot reach zero: after “{c}” the text has “{a}” and “{b}”, and every word keeps a small chance.',
     lmDone: 'Done: the model guesses the next word as well as this text allows.',
-    lmKnob: 'Weight: after “{c}” the word “{n}”', lmGraphTitle: 'A model that predicts the next word', lmTokLabel: 'Word {i} of 16: {w}',
+    lmKnob: 'Weight: after “{c}” the word “{n}”', lmGraphTitle: 'A model that predicts the next word', lmTokLabel: 'Word {i} of 12: {w}',
     lmHint1: 'Click a word in the text or use the arrow keys. The next word is the answer: nobody has to label it.',
     lmHint2: 'Turn the knobs (drag up/down or scroll): each one sets the chance of one word after the input word.',
-    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges all 64 weights (8 words × 8 knobs).',
+    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges all 49 weights (7 words × 7 knobs).',
     lmHint4: 'Write a sentence: the model draws word after word according to its chances. Sometimes it makes a sentence that was not in the text.',
     lmHintNote: 'A real model has billions of weights, sees thousands of words back and reads huge collections of text. This one sees only one word back, but the loop is the same: guess, check, correct.',
   },
@@ -724,8 +737,8 @@ const G = {
 };
 const LG = {
   cy: 212, text: { x: 4, ys: [152, 192, 232, 272], h: 30 },
-  inb: { x: 300, w: 130, h: 140 },
-  knob: { x: 520, r: 15 }, row: { x: 546, w: 410, h: 36, ys: [48, 92, 136, 180, 224, 268, 312, 356] },
+  inb: { x: 296, w: 132, h: 140 },
+  knob: { x: 520, r: 16 }, row: { x: 548, w: 408, h: 38, ys: [56, 108, 160, 212, 264, 316, 368] },
   bar: { x: 650, w: 160 },
 };
 
@@ -790,7 +803,7 @@ function solved(W) {
 }
 
 // ─── Helpers: the next-word model (pure) ───
-function lmZeros() { return Array.from({ length: 8 }, () => new Array(8).fill(0)); }
+function lmZeros() { return Array.from({ length: LM_V }, () => new Array(LM_V).fill(0)); }
 function softmax(z) {
   const m = Math.max(...z), e = z.map(v => Math.exp(v - m)), s = e.reduce((a, b) => a + b, 0);
   return e.map(v => v / s);
@@ -798,14 +811,17 @@ function softmax(z) {
 const lmProbs = (W, c) => softmax(W[c]);
 function lmLoss(W) {
   let s = 0;
-  for (let i = 0; i < LM_PAIRS; i++) s -= Math.log(lmProbs(W, LM_TEXT[i])[LM_TEXT[i + 1]]);
+  for (const idx of LM_PAIR_POS) s -= Math.log(lmProbs(W, LM_TEXT[idx])[LM_TEXT[idx + 1]]);
   return s / LM_PAIRS;
+}
+function lmTargetDist(c, n) {
+  return LM_PRIOR[c].map((pr, k) => (1 - LM_SMOOTH) * (k === n ? 1 : 0) + LM_SMOOTH * pr);
 }
 function lmGradStep(W, lr) {
   const g = W.map(r => r.map(() => 0));
-  for (let i = 0; i < LM_PAIRS; i++) {
-    const c = LM_TEXT[i], n = LM_TEXT[i + 1], p = lmProbs(W, c);
-    for (let k = 0; k < LM_V; k++) g[c][k] += (p[k] - (k === n ? 1 : 0)) / LM_PAIRS;
+  for (const idx of LM_PAIR_POS) {
+    const c = LM_TEXT[idx], n = LM_TEXT[idx + 1], p = lmProbs(W, c), q = lmTargetDist(c, n);
+    for (let k = 0; k < LM_V; k++) g[c][k] += (p[k] - q[k]) / LM_PAIRS;
   }
   return W.map((r, c) => r.map((w, k) => lmClamp(w - lr * g[c][k])));
 }
@@ -815,16 +831,14 @@ function lmSample(p, rnd) {
   return k;
 }
 function lmInText(seq) {
-  for (let i = 0; i < LM_TEXT.length; i += 4)
-    if (seq.length === 4 && seq.every((v, j) => v === LM_TEXT[i + j])) return true;
+  for (let i = 0; i < LM_TEXT.length; i += LM_SENT_LEN)
+    if (seq.length === LM_SENT_LEN && seq.every((v, j) => v === LM_TEXT[i + j])) return true;
   return false;
 }
 const lmClamp = v => Math.min(LM_W_MAX, Math.max(-LM_W_MAX, v));
 const lmWord = id => LM_VOCAB[state.lang][id];
-function lmSentence(seq, done) {
-  let s = seq.map(lmWord).join(' ').replace(/ \./g, '.');
-  if (done && seq[seq.length - 1] !== LM_END) s += ' …';
-  return s;
+function lmSentence(seq) {
+  return seq.map(lmWord).join(' ');
 }
 
 // ─── Helpers: misc ───
@@ -836,7 +850,7 @@ function fmt(v, d = 2) {
   return v.toFixed(d).replace('-', '−');
 }
 const pct = p => Math.round(p * 100) + '%';
-function pctList(probs) {
+function pctList(probs, minOne = false) {
   const max = Math.max(...probs), min = Math.min(...probs);
   if (probs.length > 2 && max - min < 1e-6) {
     const val = (100 / probs.length).toFixed(1);
@@ -844,24 +858,35 @@ function pctList(probs) {
     return probs.map(() => formatted + '%');
   }
   const raw = probs.map(p => p * 100);
-  const floored = raw.map(v => Math.floor(v + 1e-9));
+  const floored = raw.map(v => minOne ? Math.max(1, Math.floor(v + 1e-9)) : Math.floor(v + 1e-9));
   let rem = 100 - floored.reduce((a, b) => a + b, 0);
-  const order = raw.map((v, i) => ({ i, v, frac: v - floored[i] }))
-    .sort((a, b) => b.frac - a.frac || b.v - a.v || a.i - b.i);
-  let idx = 0;
-  while (rem > 0 && idx < order.length) {
-    let end = idx + 1;
-    while (end < order.length && Math.abs(order[end].frac - order[idx].frac) < 1e-6 && Math.abs(order[end].v - order[idx].v) < 1e-6) end++;
-    const groupSize = end - idx;
-    if (groupSize <= rem) {
-      for (let k = idx; k < end; k++) floored[order[k].i]++;
-      rem -= groupSize;
-      idx = end;
-    } else {
-      // Tie larger than remaining points: assign to largest probability to keep equal weights symmetric
-      const top = raw.indexOf(Math.max(...raw));
-      floored[top] += rem;
-      rem = 0;
+  if (rem > 0) {
+    const order = raw.map((v, i) => ({ i, v, frac: v - floored[i] }))
+      .sort((a, b) => b.frac - a.frac || b.v - a.v || a.i - b.i);
+    let idx = 0;
+    while (rem > 0 && idx < order.length) {
+      let end = idx + 1;
+      while (end < order.length && Math.abs(order[end].frac - order[idx].frac) < 1e-6 && Math.abs(order[end].v - order[idx].v) < 1e-6) end++;
+      const groupSize = end - idx;
+      if (groupSize <= rem) {
+        for (let k = idx; k < end; k++) floored[order[k].i]++;
+        rem -= groupSize;
+        idx = end;
+      } else {
+        const maxV = Math.max(...raw);
+        const maxCount = raw.filter(v => Math.abs(v - maxV) < 1e-6).length;
+        if (maxCount === 1 && Math.abs(order[idx].v - maxV) > 1e-6) {
+          floored[raw.indexOf(maxV)] += rem;
+        } else {
+          for (let k = idx; k < idx + rem; k++) floored[order[k].i]++;
+        }
+        rem = 0;
+      }
+    }
+  } else if (rem < 0) {
+    const order = raw.map((v, i) => ({ i, v })).sort((a, b) => b.v - a.v);
+    for (let k = 0; rem < 0 && k < order.length; k++) {
+      if (floored[order[k].i] > 1) { floored[order[k].i]--; rem++; }
     }
   }
   return floored.map(v => v + '%');
@@ -1041,7 +1066,7 @@ function buildLmGraph() {
   lmRefs.textG = el('g', {}, lmGraph);
   el('text', { class: 'muted', x: LG.text.x, y: 318, 'font-size': 10.5, 'data-i18n': 'lmCap1' }, lmGraph);
   el('text', { class: 'muted', x: LG.text.x, y: 334, 'font-size': 10.5, 'data-i18n': 'lmCap2' }, lmGraph);
-  el('path', { class: 'arrow', d: `M246 ${LG.cy} H${LG.inb.x - 7} m-6 -5 l6 5 l-6 5` }, lmGraph);
+  el('path', { class: 'arrow', d: `M224 ${LG.cy} H${LG.inb.x - 7} m-6 -5 l6 5 l-6 5` }, lmGraph);
 
   // edges (under the input box and the knobs)
   const x1 = LG.inb.x + LG.inb.w;
@@ -1053,9 +1078,9 @@ function buildLmGraph() {
   lmRefs.tokId = el('text', { x: mid, y: top + 30, 'text-anchor': 'middle', 'font-size': 11.5 }, lmGraph);
   lmRefs.word = el('text', { class: 'disp', x: mid, y: top + 72, 'text-anchor': 'middle', 'font-size': 26 }, lmGraph);
   for (let k = 0; k < LM_V; k++) {
-    const x = LG.inb.x + 13 + k * 13;
-    lmRefs.oh.push(el('rect', { class: 'oh', x, y: top + 96, width: 13, height: 18 }, lmGraph));
-    lmRefs.ohn.push(el('text', { class: 'ohn', x: x + 6.5, y: top + 109 }, lmGraph));
+    const x = LG.inb.x + 17 + k * 14;
+    lmRefs.oh.push(el('rect', { class: 'oh', x, y: top + 96, width: 14, height: 18 }, lmGraph));
+    lmRefs.ohn.push(el('text', { class: 'ohn', x: x + 7, y: top + 109 }, lmGraph));
   }
   el('text', { class: 'muted', x: mid, y: top + LG.inb.h + 16, 'text-anchor': 'middle', 'font-size': 10.5, 'data-i18n': 'lmInCap' }, lmGraph);
 
@@ -1078,10 +1103,12 @@ function layoutLmText() {
   const g = lmRefs.textG;
   g.innerHTML = ''; lmRefs.toks = [];
   LM_TEXT.forEach((id, i) => {
-    if (i % 4 === 0) layoutLmText.x = LG.text.x + 1;
-    const w = lmWord(id), bw = Math.round(w.length * 8 + 18), y = LG.text.ys[Math.floor(i / 4)];
-    const last = i === LM_TEXT.length - 1;
-    const tok = el('g', last ? { class: 'tok last', 'data-pos': i } : { class: 'tok', tabindex: 0, role: 'button', 'data-pos': i }, g);
+    if (i % LM_SENT_LEN === 0) layoutLmText.x = LG.text.x + 1;
+    const w = lmWord(id), bw = Math.round(w.length * 8 + 20), y = LG.text.ys[Math.floor(i / LM_SENT_LEN)];
+    const pairIdx = LM_PAIR_POS.indexOf(i);
+    const tok = el('g', pairIdx < 0
+      ? { class: 'tok last', 'data-pos': i }
+      : { class: 'tok', tabindex: 0, role: 'button', 'data-pos': i, 'data-pair': pairIdx }, g);
     el('rect', { x: layoutLmText.x, y: y - LG.text.h / 2, width: bw, height: LG.text.h, rx: 8 }, tok);
     el('text', { x: layoutLmText.x + bw / 2, y: y + 4.5 }, tok, w);
     layoutLmText.x += bw + 6;
@@ -1217,13 +1244,15 @@ function render() {
 }
 function renderLm() {
   const lm = state.lm, gen = lm.genCtx !== null;
-  const ctx = gen ? lm.genCtx : LM_TEXT[lm.pos], target = gen ? null : LM_TEXT[lm.pos + 1];
+  const tokIdx = LM_PAIR_POS[lm.pos];
+  const ctx = gen ? lm.genCtx : LM_TEXT[tokIdx], target = gen ? null : LM_TEXT[tokIdx + 1];
   const p = lmProbs(lm.W, ctx);
 
   // text
   lmRefs.toks.forEach((tok, i) => {
-    const isCtx = !gen && i === lm.pos, isTgt = !gen && i === lm.pos + 1;
-    tok.setAttribute('class', 'tok' + (i === LM_TEXT.length - 1 ? ' last' : '') + (isCtx ? ' ctx' : '') + (isTgt ? ' tgt' : ''));
+    const isEnd = i % LM_SENT_LEN === LM_SENT_LEN - 1;
+    const isCtx = !gen && i === tokIdx, isTgt = !gen && i === tokIdx + 1;
+    tok.setAttribute('class', 'tok' + (isEnd ? ' last' : '') + (isCtx ? ' ctx' : '') + (isTgt ? ' tgt' : ''));
     if (tok.hasAttribute('role')) {
       tok.setAttribute('aria-pressed', isCtx);
       tok.setAttribute('aria-label', t('lmTokLabel', { i: i + 1, w: lmWord(LM_TEXT[i]) }));
@@ -1240,7 +1269,7 @@ function renderLm() {
   }
 
   // knobs, edges, rows
-  const lmPcts = pctList(p);
+  const lmPcts = pctList(p, true);
   for (let k = 0; k < LM_V; k++) {
     const w = lm.W[ctx][k], sc = signClass(w), r = lmRefs.rows[k];
     lmRefs.edges[k].setAttribute('class', 'edge ' + sc);
@@ -1269,29 +1298,26 @@ function renderLm() {
   }
 
   // status: loss + generated sentence
-  const L = lmLoss(lm.W), done = L < LM_GOAL, trained = L < 1.2;
+  const L = lmLoss(lm.W), done = L < LM_GOAL, trained = L < 1.35;
   const gbox = $('#lmGenBox'), gchip = gbox.querySelector('.chip'), gnote = $('#lmGenNote');
-  gbox.querySelector('.l2').textContent = lm.gen ? lmSentence(lm.gen, lm.genDone) : t('lmGenEmpty');
+  gbox.querySelector('.l2').textContent = lm.gen ? lmSentence(lm.gen) : t('lmGenEmpty');
   gchip.hidden = !(lm.gen && lm.genDone);
   gnote.textContent = '';
   if (lm.gen && lm.genDone) {
     const known = lmInText(lm.gen);
-    const wordCount = lm.gen.filter(id => id !== LM_END).length;
     if (!trained) {
       gchip.className = 'chip untrain'; gchip.textContent = t('lmUntrained');
       gnote.textContent = t('lmNoteUntrained');
     } else if (known) {
       gchip.className = 'chip mid'; gchip.textContent = t('lmInText');
-    } else if (wordCount >= 2) {
+    } else {
       gchip.className = 'chip info'; gchip.textContent = t('lmNew');
       gnote.textContent = t('lmNoteNew');
-    } else {
-      gchip.className = 'chip mid'; gchip.textContent = t('lmFragment');
     }
   }
 
   $('#lmLossVal').textContent = fmt(L);
-  $('#lmLossBar').style.width = Math.min(100, L / 2.2 * 100) + '%';
+  $('#lmLossBar').style.width = Math.min(100, L / 2.0 * 100) + '%';
   $('#lmLossBox').classList.toggle('done', done);
   $('#lmGoalText').textContent = done ? t('lmDone') : t('lmGoal', { c: lmWord(0), a: lmWord(2), b: lmWord(3) });
   if (done !== renderLm.wasDone) { renderLm.wasDone = done; if (done) $('#live').textContent = t('lmDone'); }
@@ -1334,7 +1360,7 @@ function toggleTraining() {
 function lmStopTraining() { const lm = state.lm; if (lm.training) { lm.training = false; cancelAnimationFrame(lm.raf); } }
 function lmStopGen() { const lm = state.lm; clearTimeout(lm.genTimer); lm.genCtx = null; lm.genPick = null; if (lm.gen) lm.genDone = true; }
 function lmSetWeight(c, k, v) { lmStopTraining(); state.lm.touched = true; state.lm.W[c][k] = lmClamp(snap(v)); state.lm.steps = 0; render(); }
-function lmSetWeights(W) { lmStopTraining(); lmStopGen(); state.lm.W = W.map(r => r.map(lmClamp)); state.lm.steps = 0; render(); }
+function lmSetWeights(W) { lmStopTraining(); lmStopGen(); state.lm.gen = null; state.lm.genDone = false; state.lm.W = W.map(r => r.map(lmClamp)); state.lm.steps = 0; render(); }
 function lmSetPos(i) { lmStopGen(); state.lm.pos = (i + LM_PAIRS) % LM_PAIRS; render(); }
 function lmTrainOnce() {
   const lm = state.lm;
@@ -1350,7 +1376,7 @@ function lmTrainTick() {
 function lmToggleTraining() {
   const lm = state.lm;
   if (lm.training) { lmStopTraining(); render(); return; }
-  lmStopGen();
+  lmStopGen(); lm.gen = null; lm.genDone = false;
   lm.training = true; lm.steps = 0;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { while (lm.training) lmTrainOnce(); render(); }
   else lmTrainTick();
@@ -1359,15 +1385,16 @@ function lmToggleTraining() {
 function lmGenStep(ctx) {
   const lm = state.lm, next = lmSample(lmProbs(lm.W, ctx), lm.rng);
   lm.gen.push(next); lm.genCtx = ctx; lm.genPick = next;
-  lm.genDone = next === LM_END || lm.gen.length >= LM_GEN_MAX;
+  lm.genDone = lm.gen.length >= LM_SENT_LEN;
   return next;
 }
 function lmGenerate() {
   const lm = state.lm;
   lmStopTraining(); clearTimeout(lm.genTimer);
-  lm.gen = []; lm.genDone = false;
+  const start = LM_STARTS[Math.floor(lm.rng() * LM_STARTS.length) % LM_STARTS.length];
+  lm.gen = [start]; lm.genDone = false;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let c = LM_END;
+    let c = start;
     while (!lm.genDone) c = lmGenStep(c);
     lm.genCtx = null; lm.genPick = null; render(); return;
   }
@@ -1376,7 +1403,7 @@ function lmGenerate() {
     render();
     if (!lm.genDone) lm.genTimer = setTimeout(tick, LM_GEN_MS, next);
   };
-  tick(LM_END);
+  tick(start);
 }
 function setView(v) {
   if (v === state.view) return;
@@ -1446,15 +1473,15 @@ function bind() {
   // LLM tab
   document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   addEventListener('hashchange', () => setView(location.hash === '#llm' ? 'lm' : 'net'));
-  const lmCtx = () => state.lm.genCtx !== null ? state.lm.genCtx : LM_TEXT[state.lm.pos];
+  const lmCtx = () => state.lm.genCtx !== null ? state.lm.genCtx : LM_TEXT[LM_PAIR_POS[state.lm.pos]];
   lmRefs.knobs.forEach((kn, k) => bindKnob(kn.g, LM_W_MAX, () => state.lm.W[lmCtx()][k], v => lmSetWeight(lmCtx(), k, v)));
   const pickTok = e => {
     const tok = e.target.closest('.tok[role]');
     if (!tok) return;
     if (e.type === 'keydown') { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); }
-    const i = +tok.dataset.pos;
-    lmSetPos(i);
-    lmRefs.toks[i].focus({ preventScroll: true });
+    const pairIdx = +tok.dataset.pair;
+    lmSetPos(pairIdx);
+    lmRefs.toks[+tok.dataset.pos].focus({ preventScroll: true });
   };
   lmRefs.textG.addEventListener('click', pickTok);
   lmRefs.textG.addEventListener('keydown', pickTok);
@@ -1488,7 +1515,7 @@ layoutLmText();
 bind();
 applyLang();
 window.__nn = { FACES, TRAIN, TEST, HIDDEN, OUT, GOAL, START_W, state, forward, loss, gradStep, solved, setWeights,
-  lm: { VOCAB: LM_VOCAB, TEXT: LM_TEXT, END: LM_END, GOAL: LM_GOAL, probs: lmProbs, loss: lmLoss, gradStep: lmGradStep,
+  lm: { VOCAB: LM_VOCAB, TEXT: LM_TEXT, PAIR_POS: LM_PAIR_POS, GOAL: LM_GOAL, probs: lmProbs, loss: lmLoss, gradStep: lmGradStep,
         inText: lmInText, setWeights: lmSetWeights, setPos: lmSetPos, generate: lmGenerate, setView } };
 
 // ─── Reveal ───
