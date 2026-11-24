@@ -290,6 +290,10 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 .chip.bad { background: var(--red-soft); color: var(--red-ink); }
 .chip.mid { background: var(--yellow-soft); color: var(--yellow-ink); }
 .chip.ok  { background: var(--green-soft); color: var(--green-ink); }
+.status[hidden] { display: none; }
+.st.note { font-size: 13px; line-height: 1.4; color: var(--ink-2); background: var(--paper-2); }
+.card-head .pill-toggle { padding: 7px 13px; font-size: 15px; background: var(--surface); }
+.card-head .pill-toggle[aria-pressed="true"] { background: var(--yellow); }
 .st.loss { flex-direction: column; align-items: stretch; gap: 3px; }
 .st.loss .row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .st.loss .val { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
@@ -392,7 +396,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
         <button type="button" data-face="girl" data-i18n="girl"></button>
       </div>
       <span class="spacer"></span>
-      <span class="step-count" id="stepCount" aria-hidden="true"></span>
+      <button class="pill-toggle" id="testBtn" type="button" aria-pressed="false" data-i18n="testBtn"></button>
       <button class="btn-ghost" id="resetBtn" type="button" data-i18n="reset"></button>
       <button class="btn-ghost" id="randomBtn" type="button" data-i18n="random"></button>
       <button class="edu-btn" id="trainBtn" type="button"></button>
@@ -402,10 +406,15 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
       <button class="st" type="button" data-face="boy"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
       <button class="st" type="button" data-face="girl"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
       <div class="st loss" id="lossBox">
-        <div class="row"><span class="l1" data-i18n="loss"></span><span class="val" id="lossVal"></span></div>
+        <div class="row"><span class="l1" id="lossLabel"></span><span class="val" id="lossVal"></span></div>
         <div class="meter"><i id="lossBar"></i></div>
         <div class="goal" id="goalText"></div>
       </div>
+    </div>
+    <div class="status" id="testRow" hidden>
+      <button class="st" type="button" data-face="boy2"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
+      <button class="st" type="button" data-face="girl2"><svg viewBox="0 0 8 8" aria-hidden="true"></svg><span class="txt"><span class="l1"></span><br><span class="l2"></span></span><span class="chip"></span></button>
+      <div class="st note" data-i18n="testNote"></div>
     </div>
   </div>
   <div class="sr" aria-live="polite" id="live"></div>
@@ -437,7 +446,27 @@ const FACES = {
     .9, .2, .2, .6, .6, .2, .2, .9,
     .9, .9, .2, .2, .2, .2, .9, .9,
     .9, .9, 0, .2, .2, 0, .9, .9] },
+  // Test faces: never used for tuning or for the error.
+  boy2: { label: 0, px: [
+    0, 0, 0, .7, .7, .7, 0, 0,
+    0, .7, .7, .7, .7, .7, .7, 0,
+    0, .7, .7, .7, .2, .2, .7, 0,
+    0, .2, 1, .2, .2, 1, .2, 0,
+    0, .2, .2, .2, .2, .2, .2, 0,
+    0, .2, .2, .6, .6, .2, .2, 0,
+    0, 0, .2, .2, .2, .2, 0, 0,
+    0, 0, 0, .2, .2, 0, 0, 0] },
+  girl2: { label: 1, px: [
+    0, 0, .9, .9, .9, .9, 0, 0,
+    0, .9, .9, .9, .9, .9, .9, 0,
+    .9, .9, .9, .9, .2, .2, .9, .9,
+    .9, .2, 1, .2, .2, 1, .2, .9,
+    .9, .2, .2, .2, .2, .2, .2, .9,
+    .9, .2, .2, .6, .6, .2, .2, .9,
+    .9, 0, .2, .2, .2, .2, 0, .9,
+    0, 0, 0, .2, .2, 0, 0, 0] },
 };
+const TRAIN = ['boy', 'girl'], TEST = ['boy2', 'girl2'];
 function weightMap(entries) {
   const w = new Array(64).fill(0);
   for (const [r, c, v] of entries) w[r * 8 + c] = v;
@@ -464,8 +493,9 @@ const I18N = {
     tensorCap: '64 liczby: 0 = jasny piksel, 1 = ciemny',
     hiddenCap: '{id} = ReLU(suma piksel × waga) = ReLU({pre}) = {a}',
     h1: 'włosy po bokach', h2: 'grzywka', h3: 'oczy i usta',
-    sum: 'suma', face: 'Twarz', says: 'Sieć mówi',
-    bad: 'źle', mid: 'dobrze, ale niepewnie', ok: 'dobrze',
+    sum: 'suma', face: 'Twarz', says: 'Sieć mówi', testFace: 'Nowa', testBtn: 'Nowe twarze',
+    testNote: 'Tych twarzy sieć nie widziała podczas strojenia. Nie liczą się do błędu ani do celu: pokazują, czy wagi działają też na nowych przykładach.',
+    bad: 'źle', mid: 'niepewnie', ok: 'dobrze',
     loss: 'Błąd sieci', goal: 'Cel: obie twarze rozpoznane z pewnością co najmniej 80%.',
     done: 'Udało się: te same wagi działają dla obu twarzy.',
     knob: 'Waga {h} → {o}', graphTitle: 'Graf obliczeń sieci neuronowej',
@@ -485,8 +515,9 @@ const I18N = {
     tensorCap: '64 numbers: 0 = light pixel, 1 = dark',
     hiddenCap: '{id} = ReLU(sum of pixel × weight) = ReLU({pre}) = {a}',
     h1: 'hair at the sides', h2: 'fringe', h3: 'eyes and mouth',
-    sum: 'sum', face: 'Face', says: 'Network says',
-    bad: 'wrong', mid: 'right, but unsure', ok: 'correct',
+    sum: 'sum', face: 'Face', says: 'Network says', testFace: 'New', testBtn: 'New faces',
+    testNote: 'The network never saw these faces during tuning. They do not count towards the error or the goal: they show whether the weights also work on new examples.',
+    bad: 'wrong', mid: 'unsure', ok: 'correct',
     loss: 'Network error', goal: 'Goal: both faces recognised with at least 80% confidence.',
     done: 'Done: the same weights work for both faces.',
     knob: 'Weight {h} → {o}', graphTitle: 'Computation graph of the neural network',
@@ -512,7 +543,7 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
 const state = {
   lang: store.get('nn-lang') === 'en' ? 'en' : 'pl',
   hints: store.get('nn-hints') === '1',
-  face: 'boy',
+  face: 'boy', showTest: false,
   W: START_W.map(r => r.slice()),
   focusHidden: null, pinnedHidden: null,
   training: false, steps: 0, raf: 0,
@@ -542,11 +573,11 @@ function forward(faceKey, W) {
   return { hid, h, z, p, pred: p[1] > p[0] ? 1 : 0 };
 }
 function loss(W) {
-  const keys = Object.keys(FACES);
+  const keys = TRAIN;
   return keys.reduce((s, k) => s - Math.log(forward(k, W).p[FACES[k].label]), 0) / keys.length;
 }
 function gradStep(W, lr) {
-  const keys = Object.keys(FACES);
+  const keys = TRAIN;
   const g = W.map(r => r.map(() => 0));
   for (const key of keys) {
     const f = forward(key, W);
@@ -557,7 +588,7 @@ function gradStep(W, lr) {
   return W.map((r, i) => r.map((w, k) => clamp(w - lr * g[i][k])));
 }
 function solved(W) {
-  return Object.keys(FACES).every(k => forward(k, W).p[FACES[k].label] >= GOAL);
+  return TRAIN.every(k => forward(k, W).p[FACES[k].label] >= GOAL);
 }
 
 // ─── Helpers: misc ───
@@ -669,7 +700,7 @@ function buildGraph() {
   }); });
 
   // status thumbnails
-  document.querySelectorAll('#status button.st').forEach(b => {
+  document.querySelectorAll('.status button.st').forEach(b => {
     const svg = b.querySelector('svg');
     FACES[b.dataset.face].px.forEach((v, j) => el('rect', { x: j % 8, y: Math.floor(j / 8), width: 1.03, height: 1.03, fill: grey(v) }, svg));
   });
@@ -755,11 +786,11 @@ function render() {
   });
 
   // status strip (both faces, always)
-  document.querySelectorAll('#status button.st').forEach(b => {
+  document.querySelectorAll('.status button.st').forEach(b => {
     const key = b.dataset.face, ff = forward(key, state.W), lab = FACES[key].label;
     const right = ff.pred === lab, sure = ff.p[lab] >= GOAL;
     b.setAttribute('aria-pressed', key === state.face);
-    b.querySelector('.l1').textContent = `${t('face')}: ${t(key)}`;
+    b.querySelector('.l1').textContent = `${t(TEST.includes(key) ? 'testFace' : 'face')}: ${t(OUT[lab])}`;
     b.querySelector('.l2').textContent = `${t('says')}: ${t(OUT[ff.pred])} ${pct(ff.p[ff.pred])}`;
     const chip = b.querySelector('.chip'), st = !right ? 'bad' : (sure ? 'ok' : 'mid');
     chip.className = 'chip ' + st; chip.textContent = t(st);
@@ -778,7 +809,9 @@ function render() {
     b.setAttribute('aria-pressed', b.dataset.face === state.face);
   });
   $('#trainBtn').textContent = t(state.training ? 'stop' : 'train');
-  $('#stepCount').textContent = state.steps ? `${t('step')} ${state.steps}` : '';
+  $('#lossLabel').textContent = t('loss') + (state.steps ? ` · ${t('step')} ${state.steps}` : '');
+  $('#testRow').hidden = !state.showTest;
+  $('#testBtn').setAttribute('aria-pressed', state.showTest);
   $('#hints').hidden = !state.hints;
   $('#hintsBtn').setAttribute('aria-pressed', state.hints);
 }
@@ -790,7 +823,7 @@ function stopTraining() { if (state.training) { state.training = false; cancelAn
 function trainTick() {
   if (!state.training) return;
   state.W = gradStep(state.W, LR); state.steps++;
-  const goalMet = Object.keys(FACES).every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT);
+  const goalMet = TRAIN.every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT);
   if (goalMet || state.steps >= MAX_STEPS) state.training = false;
   else state.raf = requestAnimationFrame(trainTick);
   render();
@@ -801,7 +834,7 @@ function toggleTraining() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
     while (state.training) {
       state.W = gradStep(state.W, LR); state.steps++;
-      if (Object.keys(FACES).every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT) || state.steps >= MAX_STEPS) state.training = false;
+      if (TRAIN.every(k => forward(k, state.W).p[FACES[k].label] >= STOP_AT) || state.steps >= MAX_STEPS) state.training = false;
     }
     render();
   } else trainTick();
@@ -817,6 +850,11 @@ function bind() {
   $('#resetBtn').addEventListener('click', () => setWeights(START_W));
   $('#randomBtn').addEventListener('click', () => setWeights(START_W.map(r => r.map(() => snap(Math.random() * 4 - 2)))));
   $('#trainBtn').addEventListener('click', toggleTraining);
+  $('#testBtn').addEventListener('click', () => {
+    state.showTest = !state.showTest;
+    if (!state.showTest && TEST.includes(state.face)) state.face = 'boy';
+    render();
+  });
 
   refs.hid.forEach((g, i) => {
     g.addEventListener('pointerenter', () => { state.focusHidden = i; render(); });
@@ -860,6 +898,7 @@ function bind() {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === '1') { state.face = 'boy'; render(); }
     else if (e.key === '2') { state.face = 'girl'; render(); }
+    else if ((e.key === '3' || e.key === '4') && state.showTest) { state.face = TEST[+e.key - 3]; render(); }
     else if (e.key === 'h' || e.key === 'H') $('#hintsBtn').click();
   });
 }
@@ -868,7 +907,7 @@ function bind() {
 buildGraph();
 bind();
 applyLang();
-window.__nn = { FACES, HIDDEN, OUT, GOAL, START_W, state, forward, loss, gradStep, solved, setWeights };
+window.__nn = { FACES, TRAIN, TEST, HIDDEN, OUT, GOAL, START_W, state, forward, loss, gradStep, solved, setWeights };
 
 // ─── Reveal ───
 const FONT_WAIT_MS = 1500;
