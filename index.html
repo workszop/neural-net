@@ -312,6 +312,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 .chip.ok  { background: var(--green-soft); color: var(--green-ink); }
 .chip.info { background: var(--blue-soft); color: var(--blue-ink); }
 .chip.untrain { background: var(--paper-3); color: var(--ink-2); }
+.chip.warn { background: var(--surface); color: var(--red-600); box-shadow: inset 0 0 0 1.5px var(--red-600); }
 .chip[hidden] { display: none; }
 .st .l3 { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-2); }
 .st .l3:empty { display: none; }
@@ -606,28 +607,31 @@ const HIDDEN = [
 const START_W = [[0.8, 0.2], [0.1, 0.9], [0.5, -0.3]];   // [hidden][output]
 const LR = 0.08, MAX_STEPS = 3000, STOP_AT = 0.82;
 
-// LLM tab: a next-word predictor. 7 words, 6 simple 3-word sentences where every Subject -> Verb -> Object path makes sense.
+// LLM tab: a next-word predictor. 7 words, 6 three-word sentences. "The one-word trap": after "lubi" the model cannot
+// remember whether a cat or a dog started the sentence, so it fluently writes the untrue "kot lubi kość".
 const LM_VOCAB = {
-  pl: ['Ola', 'Jan', 'lubi', 'robi', 'je', 'pizzę', 'ciasto'],
-  en: ['Mia', 'Leo', 'likes', 'makes', 'eats', 'pizza', 'cake'],
+  pl: ['kot', 'pies', 'pije', 'gryzie', 'lubi', 'mleko', 'kość'],
+  en: ['cat', 'dog', 'drinks', 'chews', 'likes', 'milk', 'bone'],
 };
 const LM_V = 7, LM_SENT_LEN = 3, LM_GEN_COUNT = 4;
-const LM_TEXT = [0, 2, 5,  1, 2, 6,  0, 3, 5,  1, 4, 6,  0, 3, 6,  1, 4, 5];   // Ola lubi pizzę | Jan lubi ciasto | Ola robi pizzę | Jan je ciasto | Ola robi ciasto | Jan je pizzę
+const LM_TEXT = [0, 4, 5,  1, 4, 6,  0, 2, 5,  1, 3, 6,  0, 4, 5,  1, 4, 6];   // kot lubi mleko | pies lubi kość | kot pije mleko | pies gryzie kość | kot lubi mleko | pies lubi kość
+// Sentences the model can stitch from seen pairs that are not true (a person knows this, the text does not say it)
+const LM_UNTRUE = [[0, 4, 6]];                              // kot lubi kość
 const LM_PAIR_POS = LM_TEXT.map((_, i) => i).filter(i => i % LM_SENT_LEN < LM_SENT_LEN - 1); // 8 (word, next word) pairs
 const LM_PAIRS = LM_PAIR_POS.length;
-const LM_STARTS = [0, 1];                                   // sentences start with Ola/Jan (Mia/Leo)
+const LM_STARTS = [0, 1];                                   // sentences start with kot/pies (cat/dog)
 // Small random starting weights (like weight init in a real LLM); the probabilities are just softmax of the knob row
 const LM_INIT_W = [
-  [-0.2,  0.1, -0.1,  0.2,  0.3, -0.3,  0.0], // Ola
-  [ 0.1, -0.3,  0.2, -0.1,  0.0, -0.2,  0.3], // Jan
-  [ 0.2, -0.1, -0.3,  0.3, -0.2,  0.1,  0.0], // lubi
-  [-0.1,  0.2,  0.3, -0.3,  0.1, -0.2,  0.0], // robi
-  [ 0.2, -0.2,  0.1, -0.3,  0.3,  0.0, -0.1], // je
-  [-0.1,  0.3, -0.2,  0.1,  0.0, -0.3,  0.2], // pizzę
-  [ 0.3, -0.1,  0.2, -0.2,  0.0,  0.1, -0.3], // ciasto
+  [-0.2,  0.1, -0.1,  0.2,  0.3, -0.3,  0.0], // kot
+  [ 0.1, -0.3,  0.2, -0.1,  0.0, -0.2,  0.3], // pies
+  [ 0.2, -0.1, -0.3,  0.3, -0.2,  0.1,  0.0], // pije
+  [-0.1,  0.2,  0.3, -0.3,  0.1, -0.2,  0.0], // gryzie
+  [ 0.2, -0.2,  0.1, -0.3,  0.3,  0.0, -0.1], // lubi
+  [-0.1,  0.3, -0.2,  0.1,  0.0, -0.3,  0.2], // mleko
+  [ 0.3, -0.1,  0.2, -0.2,  0.0,  0.1, -0.3], // kość
 ];
-const LM_TOP_P = 0.85;
-const LM_W_MAX = 2.0, LM_LR = 1.4, LM_GOAL = 0.76, LM_STOP_AT = 0.722, LM_MAX_STEPS = 1200;
+const LM_TOP_P = 0.75;
+const LM_W_MAX = 2.0, LM_LR = 1.4, LM_GOAL = 0.7, LM_STOP_AT = 0.65, LM_MAX_STEPS = 1200;
 // Verdicts compare the model's chance with how often the word really follows in the text (Ola -> lubi is 1 of 3)
 const LM_BAD = 0.4, LM_OK = 0.7, LM_GEN_MS = 340;
 
@@ -667,20 +671,21 @@ const I18N = {
     lmToken: 'słowo #{id} (token)', lmInCap: '1 wybiera wiersz 7 pokręteł', lmTag: '✓ z tekstu',
     lmPair: 'Po „{c}” w tekście jest „{n}”', lmGives: 'Model daje mu {p}',
     lmGenPair: 'Próba {n}/{of} · po „{c}”', lmGenPick: 'Wylosował „{n}”, miało {p} szans',
-    lmWrites: 'Model pisze (4 próby)', lmLoss: 'Błąd modelu', lmGenEmpty: 'Kliknij „Napisz 4 zdania”', lmInText: 'z tekstu', lmNew: 'nowe zdanie', lmSlip: 'pomyłka',
+    lmWrites: 'Model pisze (4 próby)', lmLoss: 'Błąd modelu', lmGenEmpty: 'Kliknij „Napisz 4 zdania”', lmInText: 'z tekstu', lmNew: 'nowe zdanie', lmUntrue: 'nieprawda', lmSlip: 'pomyłka',
     lmUntrained: 'losowy traf', lmFragment: 'krótki fragment',
     lmNoteUntrained: 'Wagi nie są jeszcze dostrojone, więc model losuje w ciemno.',
     lmNoteNew: 'Te same wagi, 4 osobne losowania: dlatego czat AI za każdym razem odpowiada trochę inaczej.',
+    lmNoteUntrue: 'Zdanie „{s}” brzmi płynnie, ale nie jest prawdą. Model widzi tylko 1 słowo wstecz: po „{m}” nie pamięta już, że zdanie zaczęło się od „{f}”. Tak powstają halucynacje.',
     lmNoteWhy: 'Zdania „{s}” nie ma w tekście. Model widzi tylko 1 słowo wstecz: zna „{a}” i osobno „{b}”, więc skleja je w nowe zdanie.',
     lmLegendDrag: 'Pokrętła: przeciągnij góra/dół, kliknij boki lub użyj rolki',
     lmLegendPos: 'większa szansa (+)', lmLegendNeg: 'mniejsza szansa (−)',
     lmLegendClick: 'Kliknij słowo w tekście po lewej',
-    lmGoal: 'Cel: błąd poniżej 0.76. Zera nie będzie: po „{c}” raz jest „{a}”, raz „{b}”, a każde słowo zachowuje małą szansę.',
+    lmGoal: 'Cel: błąd poniżej {g}. Zera nie będzie: po „{c}” raz jest „{a}”, raz „{b}”, a każde słowo zachowuje małą szansę.',
     lmDone: 'Udało się: model zgaduje następne słowo tak dobrze, jak pozwala ten tekst.',
     lmKnob: 'Waga: po „{c}” słowo „{n}”', lmGraphTitle: 'Model przewidujący następne słowo', lmTokLabel: 'Słowo {i} z {of}: {w}',
     lmHint1: 'Kliknij słowo w tekście albo użyj strzałek. Następne słowo to odpowiedź: nikt nie musi jej podpisywać.',
     lmHint2: 'Kręć pokrętłami (przeciągnij góra/dół lub użyj rolki): każde ustawia szansę jednego słowa po słowie na wejściu.',
-    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia 35 wag (5 słów × 7 pokręteł). Wiersze „pizzę” i „ciasto” zostają bez zmian, bo w tekście nic po nich nie ma.',
+    lmHint3: 'Niech maszyna dostroi: przechodzi przez cały tekst i po trochu poprawia 35 wag (5 słów × 7 pokręteł). Wiersze „mleko” i „kość” zostają bez zmian, bo w tekście nic po nich nie ma.',
     lmHint4: 'Napisz 4 zdania: model 4 razy losuje słowo po słowie, ale tylko spośród najbardziej prawdopodobnych (top-p, jak w czatach AI). Te same wagi dają różne zdania.',
     lmHintNote: 'Prawdziwy model ma miliardy wag, widzi tysiące słów wstecz i czyta ogromne zbiory tekstu. Ten widzi tylko jedno słowo wstecz, ale pętla jest ta sama: zgadnij, sprawdź, popraw.',
   },
@@ -719,20 +724,21 @@ const I18N = {
     lmToken: 'word #{id} (token)', lmInCap: '1 picks this word’s 7 knobs', lmTag: '✓ in the text',
     lmPair: 'After “{c}” the text has “{n}”', lmGives: 'The model gives it {p}',
     lmGenPair: 'Run {n}/{of} · after “{c}”', lmGenPick: 'It drew “{n}”, which had a {p} chance',
-    lmWrites: 'The model writes (4 runs)', lmLoss: 'Model error', lmGenEmpty: 'Click “Write 4 sentences”', lmInText: 'in text', lmNew: 'new sentence', lmSlip: 'slip',
+    lmWrites: 'The model writes (4 runs)', lmLoss: 'Model error', lmGenEmpty: 'Click “Write 4 sentences”', lmInText: 'in text', lmNew: 'new sentence', lmUntrue: 'untrue', lmSlip: 'slip',
     lmUntrained: 'random draw', lmFragment: 'short fragment',
     lmNoteUntrained: 'Weights are not tuned yet, so the model picks words at random.',
     lmNoteNew: 'Same weights, 4 separate draws: that is why an AI chat answers a little differently each time.',
+    lmNoteUntrue: '“{s}” sounds fluent but is not true. The model sees only 1 word back: after “{m}” it no longer remembers that the sentence started with “{f}”. This is how hallucinations happen.',
     lmNoteWhy: '“{s}” is not in the text. The model sees only 1 word back: it knows “{a}” and, separately, “{b}”, so it joins them into a new sentence.',
     lmLegendDrag: 'Knobs: drag up/down, click sides or scroll',
     lmLegendPos: 'higher chance (+)', lmLegendNeg: 'lower chance (−)',
     lmLegendClick: 'Click a word in the text on the left',
-    lmGoal: 'Goal: error below 0.76. It cannot reach zero: after “{c}” the text has “{a}” and “{b}”, and every word keeps a small chance.',
+    lmGoal: 'Goal: error below {g}. It cannot reach zero: after “{c}” the text has “{a}” and “{b}”, and every word keeps a small chance.',
     lmDone: 'Done: the model guesses the next word as well as this text allows.',
     lmKnob: 'Weight: after “{c}” the word “{n}”', lmGraphTitle: 'A model that predicts the next word', lmTokLabel: 'Word {i} of {of}: {w}',
     lmHint1: 'Click a word in the text or use the arrow keys. The next word is the answer: nobody has to label it.',
     lmHint2: 'Turn the knobs (drag up/down or scroll): each one sets the chance of one word after the input word.',
-    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges 35 weights (5 words × 7 knobs). The “pizza” and “cake” rows stay as they are, because nothing follows them in the text.',
+    lmHint3: 'Let the machine tune it: it goes through the whole text and nudges 35 weights (5 words × 7 knobs). The “milk” and “bone” rows stay as they are, because nothing follows them in the text.',
     lmHint4: 'Write 4 sentences: the model draws word by word 4 times, but only from the most likely words (top-p, like real AI chats). The same weights give different sentences.',
     lmHintNote: 'A real model has billions of weights, sees thousands of words back and reads huge collections of text. This one sees only one word back, but the loop is the same: guess, check, correct.',
   },
@@ -846,7 +852,7 @@ function lmGradStep(W, lr) {
   }
   return W.map((r, c) => r.map((w, k) => lmClamp(w - lr * g[c][k])));
 }
-// Nucleus (top-p) sampling, as in real chat LLMs: keeps the top 85% of probability mass so tuned models stay grammatical while staying varied
+// Nucleus (top-p) sampling, as in real chat LLMs: keeps the top 75% of probability mass so tuned models stay grammatical while staying varied
 function lmSample(p, rnd, topP = LM_TOP_P) {
   const sorted = p.map((prob, k) => ({ k, prob })).sort((a, b) => b.prob - a.prob);
   const kept = [];
@@ -874,11 +880,13 @@ function lmInText(seq) {
 }
 const lmClamp = v => Math.min(LM_W_MAX, Math.max(-LM_W_MAX, v));
 const lmWord = id => LM_VOCAB[state.lang][id];
-// untrain: weights not tuned yet · text: copied from the text · new: every word pair is in the text, the sentence is not · slip: uses a pair the text never has
+// untrain: weights not tuned yet · text: copied from the text · new: every word pair is in the text, the sentence is not
+// untrue: like new, but false (fluent stitching = hallucination) · slip: uses a pair the text never has
 function lmSentKind(seq, trained) {
   if (!trained) return 'untrain';
   if (lmInText(seq)) return 'text';
-  return lmPairsSeen(seq) ? 'new' : 'slip';
+  if (!lmPairsSeen(seq)) return 'slip';
+  return LM_UNTRUE.some(u => u.every((v, j) => v === seq[j])) ? 'untrue' : 'new';
 }
 function lmSentence(seq) {
   return seq.map(lmWord).join(' ');
@@ -1372,24 +1380,27 @@ function renderLm() {
       if (seq.length >= LM_SENT_LEN) {
         const badge = document.createElement('span');
         const kind = lmSentKind(seq, trained);
-        badge.className = 'chip ' + { untrain: 'untrain', text: 'mid', new: 'info', slip: 'bad' }[kind];
-        badge.textContent = t({ untrain: 'lmUntrained', text: 'lmInText', new: 'lmNew', slip: 'lmSlip' }[kind]);
+        badge.className = 'chip ' + { untrain: 'untrain', text: 'mid', new: 'info', untrue: 'warn', slip: 'bad' }[kind];
+        badge.textContent = t({ untrain: 'lmUntrained', text: 'lmInText', new: 'lmNew', untrue: 'lmUntrue', slip: 'lmSlip' }[kind]);
         row.dataset.kind = kind;
         row.appendChild(badge);
       }
       glist.appendChild(row);
     });
     if (lm.genDone) {
+      // an untrue sentence is the bigger lesson, so its note wins over the plain "new sentence" note
+      const untrue = trained && lm.gens.find(q => lmSentKind(q, trained) === 'untrue');
       const fresh = trained && lm.gens.find(q => lmSentKind(q, trained) === 'new');
-      gnote.textContent = t(trained ? 'lmNoteNew' : 'lmNoteUntrained') + (fresh ? ' ' + t('lmNoteWhy', {
-        s: lmSentence(fresh), a: lmSentence(fresh.slice(0, 2)), b: lmSentence(fresh.slice(1, 3)) }) : '');
+      const extra = untrue ? t('lmNoteUntrue', { s: lmSentence(untrue), m: lmWord(untrue[1]), f: lmWord(untrue[0]) })
+        : fresh ? t('lmNoteWhy', { s: lmSentence(fresh), a: lmSentence(fresh.slice(0, 2)), b: lmSentence(fresh.slice(1, 3)) }) : '';
+      gnote.textContent = t(trained ? 'lmNoteNew' : 'lmNoteUntrained') + (extra ? ' ' + extra : '');
     }
   }
 
   $('#lmLossVal').textContent = fmt(L);
   $('#lmLossBar').style.width = Math.min(100, L / 2.0 * 100) + '%';
   $('#lmLossBox').classList.toggle('done', done);
-  $('#lmGoalText').textContent = done ? t('lmDone') : t('lmGoal', { c: lmWord(0), a: lmWord(2), b: lmWord(3) });
+  $('#lmGoalText').textContent = done ? t('lmDone') : t('lmGoal', { g: fmt(LM_GOAL), c: lmWord(0), a: lmWord(4), b: lmWord(2) });
   if (done !== renderLm.wasDone) { renderLm.wasDone = done; if (done) $('#live').textContent = t('lmDone'); }
   $('#lmLossLabel').textContent = t('lmLoss') + (lm.steps ? ` · ${t('step')} ${lm.steps}` : '');
   const lmTrainBtn = $('#lmTrainBtn');
