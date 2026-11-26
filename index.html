@@ -235,10 +235,10 @@ button { font: inherit; }
 .edu-app-title { margin: 0 0 0 14px; padding-left: 14px; border-left: 1px solid var(--line-2);
   font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.01em; line-height: 1.2;
   color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
-.view-seg { margin-left: 14px; }
+.view-seg { margin-left: auto; }   /* tabs sit right, next to the tools */
 .view-seg button { font-size: 15px; white-space: nowrap; }
 [data-view-panel][hidden] { display: none; }
-.head-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.head-tools { margin-left: 12px; display: flex; align-items: center; gap: 10px; }
 .edu-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--paper-2); border-radius: var(--r-pill); }
 .edu-seg button { border: none; background: transparent; padding: 7px 14px; border-radius: var(--r-pill);
   font-family: var(--font-sans); font-weight: 600; color: var(--ink-2); cursor: pointer; }
@@ -424,6 +424,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
   .edu-app-title { font-size: 15px; margin-left: 10px; padding-left: 10px; }
   .edu-header-inner { flex-wrap: wrap; }
   .view-seg { order: 3; width: 100%; margin: 0 0 6px; }
+  .head-tools { margin-left: auto; }
   .view-seg button { flex: 1; }
   .hints { position: static; margin-bottom: 12px; }
   .hints ol { grid-template-columns: 1fr; }
