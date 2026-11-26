@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=202611240841">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=202611240841">
 <meta name="theme-color" content="#FFD500">
-<title>Sieć neuronowa jako graf obliczeń</title>
+<title>Sieć neuronowa jako graf obliczeniowy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
@@ -232,6 +232,9 @@ button { font: inherit; }
 .edu-header-inner { padding: 4px var(--gutter); display: flex; align-items: center; gap: 12px; }
 .edu-logo { width: 64px; height: 64px; display: block; margin-right: -6px; }
 .edu-wordmark { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -.02em; color: var(--ink); }
+.edu-app-title { margin: 0 0 0 14px; padding-left: 14px; border-left: 1px solid var(--line-2);
+  font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.01em; line-height: 1.2;
+  color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .view-seg { margin-left: 14px; }
 .view-seg button { font-size: 15px; white-space: nowrap; }
 [data-view-panel][hidden] { display: none; }
@@ -418,6 +421,7 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
 
 @media (max-width: 768px) {
   .edu-logo { width: 48px; height: 48px; }
+  .edu-app-title { font-size: 15px; margin-left: 10px; padding-left: 10px; }
   .edu-header-inner { flex-wrap: wrap; }
   .view-seg { order: 3; width: 100%; margin: 0 0 6px; }
   .view-seg button { flex: 1; }
@@ -431,12 +435,14 @@ button.st[aria-pressed="true"] { border-color: var(--ink); }
     background: linear-gradient(to left, var(--paper), transparent);
   }
 }
+@media (max-width: 560px) { .edu-app-title { display: none; } }
 </style>
 </head>
 <body class="edu">
 <header class="edu-header"><div class="edu-header-inner">
   <img class="edu-logo" alt="edulab" src="edulab-mark-ink.png">
   <span class="edu-wordmark">edulab</span>
+  <span class="edu-app-title" data-i18n="appName"></span>
   <div class="edu-seg view-seg" role="tablist" id="viewSeg">
     <button type="button" role="tab" id="tabNet" data-view="net" aria-controls="viewNet" data-i18n="tabNet"></button>
     <button type="button" role="tab" id="tabLm" data-view="lm" aria-controls="viewLm" data-i18n="tabLm"></button>
@@ -637,8 +643,8 @@ const LM_BAD = 0.4, LM_OK = 0.7, LM_GEN_MS = 340;
 
 const I18N = {
   pl: {
-    docTitle: 'Sieć neuronowa jako graf obliczeń',
-    title: 'Sieć neuronowa jako graf obliczeń',
+    docTitle: 'Sieć neuronowa jako graf obliczeniowy',
+    title: 'Sieć neuronowa jako graf obliczeniowy',
     lead: 'Obraz zamienia się w liczby, liczby płyną przez sieć, a wagi decydują o wyniku. Ustaw pokrętła tak, żeby sieć rozpoznała obie twarze.',
     hintsBtn: 'Wskazówki', closeHints: 'Zamknij wskazówki', pickFace: 'Twarz na wejściu', boy: 'chłopiec', girl: 'dziewczynka',
     reset: 'Od nowa', random: 'Losowe wagi', train: 'Niech maszyna dostroi', stop: 'Zatrzymaj', step: 'krok',
@@ -651,7 +657,7 @@ const I18N = {
     bad: 'źle', mid: 'niepewnie', ok: 'dobrze',
     loss: 'Błąd sieci', goal: 'Cel: obie twarze ≥ 80% (niższy błąd = pewniejsze trafienia).',
     done: 'Udało się: te same wagi działają dla obu twarzy.',
-    knob: 'Waga {h} → {o}', graphTitle: 'Graf obliczeń sieci neuronowej',
+    knob: 'Waga {h} → {o}', graphTitle: 'Graf obliczeniowy sieci neuronowej',
     scrollHint: 'Przesuń graf w prawo, żeby zobaczyć pokrętła i wyniki →',
     netLegendDrag: 'Pokrętła: przeciągnij góra/dół, kliknij boki lub użyj rolki',
     netLegendPos: 'waga dodatnia (+)', netLegendNeg: 'waga ujemna (−)',
@@ -661,7 +667,7 @@ const I18N = {
     hint3: 'Kręć pokrętłami: przeciągnij góra/dół, kliknij lewy/prawy bok, użyj rolki myszy albo strzałek.',
     hint4: 'Sprawdź obie twarze. Te same wagi muszą działać dla obu.',
     hintNote: 'To dwa rysunki, nie ludzie: sieć szuka różnic między obrazkami. Niebieski = waga dodatnia, czerwony = ujemna.',
-    tabNet: 'Sieć neuronowa', tabLm: 'Trening LLM',
+    appName: 'Sieć neuronowa', tabNet: 'Sieć neuronowa', tabLm: 'Trening LLM',
     lmDocTitle: 'Trening LLM: zgadnij następne słowo',
     lmTitle: 'Trening LLM: zgadnij następne słowo',
     lmLead: 'Podczas nauki na tekście (pretreningu) model uczy się jednego: jakie słowo będzie następne. Odpowiedź jest już w tekście. Porusz pokrętłami ręcznie, a potem pozwól maszynie dostroić wszystkie wagi.',
@@ -714,7 +720,7 @@ const I18N = {
     hint3: 'Turn the knobs: drag up/down, click the left/right side, use the mouse wheel or arrow keys.',
     hint4: 'Check both faces. The same weights must work for both.',
     hintNote: 'These are two drawings, not people: the network looks for differences between the pictures. Blue = positive weight, red = negative.',
-    tabNet: 'Neural network', tabLm: 'LLM training',
+    appName: 'Neural network', tabNet: 'Neural network', tabLm: 'LLM training',
     lmDocTitle: 'LLM training: guess the next word',
     lmTitle: 'LLM training: guess the next word',
     lmLead: 'During text training (pretraining) a model learns one thing: which word comes next. The answer is already in the text. Try turning the knobs by hand, then let the machine tune all the weights.',
